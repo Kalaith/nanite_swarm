@@ -169,6 +169,31 @@ impl BuildingType {
             BuildingType::Core => None,
         }
     }
+
+    /// Short description for UI
+    pub fn description(&self) -> &'static str {
+        match self {
+            BuildingType::Core => "Central AI hub. Powers nearby grid and receives resources.",
+            BuildingType::Drill => "Extracts minerals and spawns drones to deliver them.",
+            BuildingType::Conduit => "Transmits power and connects buildings.",
+            BuildingType::Bridge => "Allows conduit crossings on the same tile.",
+            BuildingType::PowerNode => "Repeater that extends power range.",
+            BuildingType::WindTurbine => "Generates power. Bonus on mountains.",
+            BuildingType::ServerBank => "Consumes power to generate research data.",
+        }
+    }
+
+    /// Net power per second (positive = generation, negative = consumption)
+    pub fn power_delta(&self) -> f32 {
+        match self {
+            BuildingType::Core => 10.0,
+            BuildingType::WindTurbine => 5.0,
+            BuildingType::Drill => -2.0,
+            BuildingType::ServerBank => -5.0,
+            _ => 0.0,
+        }
+    }
+
 }
 
 /// A building placed on the grid

@@ -13,8 +13,8 @@ impl Colors {
     pub const SECONDARY: Color = Color::new(0.4, 0.4, 0.4, 1.0);      // #666666 - Buildings
     pub const ACCENT: Color = Color::new(1.0, 0.42, 0.21, 1.0);       // #FF6B35 - Resources
     pub const BACKGROUND: Color = Color::new(0.04, 0.04, 0.04, 1.0);  // #0A0A0A - Space
-    pub const SURFACE: Color = Color::new(0.1, 0.1, 0.1, 1.0);        // #1A1A1A - UI panels
-    pub const SURFACE_DARK: Color = Color::new(0.07, 0.07, 0.08, 1.0); // Deeper surface for layering
+    pub const SURFACE: Color = Color::new(0.11, 0.12, 0.13, 1.0);       // Refined panel base
+    pub const SURFACE_DARK: Color = Color::new(0.06, 0.07, 0.08, 1.0);  // Layered shadow surface
     pub const PANEL_BORDER: Color = Color::new(0.0, 0.6, 0.75, 0.5);   // Subtle cyan edge
     pub const SUCCESS: Color = Color::new(0.3, 0.69, 0.31, 1.0);      // #4CAF50
     pub const WARNING: Color = Color::new(1.0, 0.6, 0.0, 1.0);        // #FF9800

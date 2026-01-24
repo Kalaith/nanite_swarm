@@ -24,6 +24,12 @@ pub struct Particle {
     pub size: f32,
 }
 
+/// Placement animation for newly placed buildings
+#[derive(Debug, Clone)]
+pub struct PlacementAnim {
+    pub position: GridPos,
+    pub timer: f32,
+}
 /// Resources held by the player
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Resources {
@@ -108,6 +114,8 @@ pub struct PlanetState {
     pub particles: Vec<Particle>,
     #[serde(skip, default)]
     pub particle_timer: f32,
+    #[serde(skip, default)]
+    pub placement_anims: Vec<PlacementAnim>,
     // Drill production timers (drill position -> accumulated time)
     #[serde(skip)]
     pub drill_timers: std::collections::HashMap<(i32, i32), f32>,
@@ -175,6 +183,7 @@ impl PlanetState {
             show_help: false,
             particles: Vec::new(),
             particle_timer: 0.0,
+            placement_anims: Vec::new(),
             drill_timers: std::collections::HashMap::new(),
             server_timers: std::collections::HashMap::new(),
         }
@@ -210,6 +219,12 @@ impl PlanetState {
                 self.grid.update_power_grid();
                 self.power_balance = self.grid.net_power();
                 self.update_achievements();
+
+                self.placement_anims.push(PlacementAnim {
+                    position: pos,
+                    timer: 0.3,
+                });
+                self.spawn_place_burst(pos);
 
                 return true;
             }
@@ -382,6 +397,11 @@ impl PlanetState {
         if self.offline_notice_timer > 0.0 {
             self.offline_notice_timer = (self.offline_notice_timer - delta_time).max(0.0);
         }
+
+        for anim in &mut self.placement_anims {
+            anim.timer = (anim.timer - delta_time).max(0.0);
+        }
+        self.placement_anims.retain(|anim| anim.timer > 0.0);
     }
 
     /// Update drill production and drone dispatching
@@ -495,6 +515,15 @@ impl PlanetState {
         (unlocked, total)
     }
 
+    pub fn placement_scale(&self, pos: GridPos) -> f32 {
+        let Some(anim) = self.placement_anims.iter().find(|anim| anim.position == pos) else {
+            return 1.0;
+        };
+        let progress = (anim.timer / 0.3).clamp(0.0, 1.0);
+        let bounce_phase = (1.0 - progress) * std::f32::consts::PI * 2.0;
+        1.0 + (bounce_phase.sin() * 0.12)
+    }
+
     fn update_achievements(&mut self) {
         let has_drill = !self.grid.find_buildings(BuildingType::Drill).is_empty();
         if has_drill {
@@ -544,6 +573,18 @@ impl PlanetState {
             let velocity = (angle.cos() * speed, angle.sin() * speed);
             let life = gen_range(0.35, 0.6);
             self.spawn_particle(origin, velocity, life, Color::new(1.0, 0.42, 0.21, 1.0), 3.0);
+        }
+    }
+
+    fn spawn_place_burst(&mut self, pos: GridPos) {
+        let origin = (pos.x as f32, pos.y as f32);
+        let count = 10;
+        for index in 0..count {
+            let angle = (index as f32 / count as f32) * std::f32::consts::TAU;
+            let speed = gen_range(0.6, 1.4);
+            let velocity = (angle.cos() * speed, angle.sin() * speed);
+            let life = gen_range(0.25, 0.5);
+            self.spawn_particle(origin, velocity, life, Color::new(0.0, 0.85, 1.0, 1.0), 2.5);
         }
     }
 

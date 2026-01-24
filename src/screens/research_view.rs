@@ -1,11 +1,12 @@
 //! Neural network research interface
 
 use macroquad::prelude::*;
-use crate::ui::{Colors, Dimensions, draw_panel};
+use crate::ui::{Colors, Dimensions, draw_button_sized, draw_panel};
 use crate::engine::{ResearchTree, ResearchState};
 
 const NODE_RADIUS: f32 = 25.0;
 const GRID_SCALE: f32 = 100.0;
+const HEADER_HEIGHT: f32 = 72.0;
 
 /// Actions from the research view
 #[derive(Debug, Clone, PartialEq)]
@@ -26,12 +27,16 @@ pub fn render_research_view(
     let screen_w = screen_width();
     let screen_h = screen_height();
     let center_x = screen_w / 2.0;
-    let center_y = screen_h / 2.0 - 50.0;
+    let center_y = screen_h / 2.0 - 30.0;
     let pulse = (get_time() as f32 * 2.0).sin().abs();
 
     // Header
-    draw_panel(0.0, 0.0, screen_w, 50.0);
-    draw_text("Neural Network", 20.0, 35.0, Dimensions::FONT_SIZE_LARGE, Colors::PRIMARY);
+    draw_panel(0.0, 0.0, screen_w, HEADER_HEIGHT);
+    draw_text("Neural Network", 18.0, 30.0, 18.0, Colors::PRIMARY);
+    draw_text(&format!("Data {:.0}", data_available), 18.0, 52.0, 12.0, Colors::TEXT_DIM);
+    if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
+        return ResearchAction::Close;
+    }
     draw_text(
         &format!("Data: {:.0}", data_available),
         screen_w - 150.0,
@@ -40,17 +45,35 @@ pub fn render_research_view(
         Colors::PRIMARY,
     );
 
+    let left_panel_x = 16.0;
+    let left_panel_y = HEADER_HEIGHT + 12.0;
+    let left_panel_w = 280.0;
+    let left_panel_h = screen_h - left_panel_y - 80.0;
+    draw_panel(left_panel_x, left_panel_y, left_panel_w, left_panel_h);
+    draw_text("Research Intel", left_panel_x + 12.0, left_panel_y + 28.0, 16.0, Colors::PRIMARY);
+
+    let right_panel_w = 260.0;
+    let right_panel_x = screen_w - right_panel_w - 16.0;
+    let right_panel_y = HEADER_HEIGHT + 12.0;
+    let right_panel_h = screen_h - right_panel_y - 80.0;
+    draw_panel(right_panel_x, right_panel_y, right_panel_w, right_panel_h);
+    draw_text("Legend", right_panel_x + 12.0, right_panel_y + 28.0, 16.0, Colors::PRIMARY);
+
+    let mut left_text_y = left_panel_y + 56.0;
     if let Some(current) = &research_state.current_research {
         if let Some(node) = research_tree.get_node(current) {
             let progress = research_state.research_progress.min(node.data_cost);
             let pct = if node.data_cost > 0.0 { progress / node.data_cost } else { 1.0 };
-            let bar_w = 220.0;
-            let bar_x = screen_w * 0.5 - bar_w * 0.5;
-            let bar_y = 18.0;
-            draw_rectangle(bar_x, bar_y, bar_w, 10.0, Colors::SURFACE);
-            draw_rectangle(bar_x, bar_y, bar_w * pct, 10.0, Colors::PRIMARY);
-            draw_text(&format!("Research: {}", node.name), bar_x, bar_y - 4.0, 12.0, Colors::TEXT_DIM);
+            draw_text("Active Research", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
+            draw_text(&node.name, left_panel_x + 12.0, left_text_y + 18.0, 14.0, Colors::TEXT);
+            draw_rectangle(left_panel_x + 12.0, left_text_y + 32.0, left_panel_w - 24.0, 10.0, Colors::SURFACE_DARK);
+            draw_rectangle(left_panel_x + 12.0, left_text_y + 32.0, (left_panel_w - 24.0) * pct, 10.0, Colors::PRIMARY);
+            draw_rectangle_lines(left_panel_x + 12.0, left_text_y + 32.0, left_panel_w - 24.0, 10.0, 1.0, Colors::PANEL_BORDER);
+            left_text_y += 60.0;
         }
+    } else {
+        draw_text("No research selected.", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
+        left_text_y += 24.0;
     }
 
     // Get mouse position
@@ -139,36 +162,45 @@ pub fn render_research_view(
         }
     }
 
-    // Draw tooltip for hovered node
+    // Info panel for hovered node
     if let Some(node_id) = hovered_node {
         if let Some(node) = research_tree.get_node(node_id) {
-            let tooltip_x = 10.0;
-            let tooltip_y = screen_h - 140.0;
-            draw_panel(tooltip_x, tooltip_y, 300.0, 130.0);
-
-            draw_text(&node.name, tooltip_x + 15.0, tooltip_y + 30.0, 20.0, Colors::PRIMARY);
-            draw_text(&node.description, tooltip_x + 15.0, tooltip_y + 55.0, 14.0, Colors::TEXT);
+            draw_text("Hovered Node", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
+            draw_text(&node.name, left_panel_x + 12.0, left_text_y + 18.0, 14.0, Colors::TEXT);
+            draw_text(&node.description, left_panel_x + 12.0, left_text_y + 36.0, 12.0, Colors::TEXT_DIM);
 
             if !research_state.is_unlocked(node_id) {
-                let cost_text = format!("Cost: {:.0} Data", node.data_cost);
-                draw_text(&cost_text, tooltip_x + 15.0, tooltip_y + 80.0, 14.0, Colors::ACCENT);
+                let cost_text = format!("Cost {:.0} Data", node.data_cost);
+                draw_text(&cost_text, left_panel_x + 12.0, left_text_y + 54.0, 12.0, Colors::ACCENT);
 
                 if research_tree.can_select(node_id, &research_state.unlocked) {
                     if research_tree.can_research(node_id, &research_state.unlocked, data_available) {
-                        draw_text("Click to research", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::SUCCESS);
+                        draw_text("Click to research", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::SUCCESS);
                     } else {
-                        draw_text("Click to select (insufficient Data)", tooltip_x + 15.0, tooltip_y + 100.0, 12.0, Colors::WARNING);
+                        draw_text("Click to select (insufficient Data)", left_panel_x + 12.0, left_text_y + 72.0, 11.0, Colors::WARNING);
                     }
                 } else if !node.prerequisites.iter().all(|p| research_state.is_unlocked(p)) {
-                    draw_text("Prerequisites not met", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::ERROR);
+                    draw_text("Prerequisites not met", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::ERROR);
                 } else {
-                    draw_text("Not enough Data", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::WARNING);
+                    draw_text("Not enough Data", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::WARNING);
                 }
             } else {
-                draw_text("UNLOCKED", tooltip_x + 15.0, tooltip_y + 80.0, 16.0, Colors::SUCCESS);
+                draw_text("UNLOCKED", left_panel_x + 12.0, left_text_y + 60.0, 12.0, Colors::SUCCESS);
             }
         }
+    } else {
+        draw_text("Hover a node to inspect.", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
     }
+
+    // Legend
+    draw_text("Unlocked", right_panel_x + 12.0, right_panel_y + 56.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(right_panel_x + 18.0, right_panel_y + 74.0, 6.0, Colors::PRIMARY);
+    draw_text("In Progress", right_panel_x + 12.0, right_panel_y + 98.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(right_panel_x + 18.0, right_panel_y + 116.0, 6.0, Colors::WARNING);
+    draw_text("Available", right_panel_x + 12.0, right_panel_y + 140.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(right_panel_x + 18.0, right_panel_y + 158.0, 6.0, Colors::SUCCESS);
+    draw_text("Locked", right_panel_x + 12.0, right_panel_y + 182.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(right_panel_x + 18.0, right_panel_y + 200.0, 6.0, Colors::SECONDARY);
 
     // Instructions
     draw_text(

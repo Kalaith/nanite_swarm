@@ -17,6 +17,15 @@
 - Conduit auto-routing with obstacle avoidance
 - Research progress system with active topic and progress bar
 - Sell button for buildings with partial refunds
+- Place-building bounce animation with particle burst
+- Conduit autotiling (connected pipe rendering)
+- Power node glow bleed and powered building pulse
+- Drone trail rendering for moving drones
+- Terrain variation for empty tiles
+- Full UI overhaul with new HUD, build palette cards, intel sidebar, and command bar
+
+### Changed
+- Redesigned main menu, research, interplanetary, and settings screen layouts
 
 ### Fixed
 - (empty)

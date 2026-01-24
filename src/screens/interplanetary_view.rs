@@ -1,7 +1,7 @@
 //! Solar system overview screen
 
 use macroquad::prelude::*;
-use crate::ui::{Colors, Dimensions, draw_panel};
+use crate::ui::{Colors, Dimensions, draw_button_sized, draw_panel};
 
 /// Planet data for the solar system
 #[derive(Debug, Clone)]
@@ -91,29 +91,37 @@ pub fn render_interplanetary_view(
     let screen_h = screen_height();
     let (mouse_x, mouse_y) = mouse_position();
 
+    let header_height = 72.0;
+
     // Header
-    draw_panel(0.0, 0.0, screen_w, 50.0);
-    draw_text("Solar System", 20.0, 35.0, Dimensions::FONT_SIZE_LARGE, Colors::PRIMARY);
+    draw_panel(0.0, 0.0, screen_w, header_height);
+    draw_text("Solar System", 18.0, 30.0, 18.0, Colors::PRIMARY);
+    draw_text("Planetary Map", 18.0, 52.0, 12.0, Colors::TEXT_DIM);
+    if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
+        return InterplanetaryAction::Close;
+    }
 
     if has_mass_driver {
         draw_text(
             "Mass Driver: ONLINE",
-            screen_w - 200.0, 35.0,
-            Dimensions::FONT_SIZE_NORMAL,
+            screen_w - 320.0,
+            50.0,
+            12.0,
             Colors::SUCCESS,
         );
     } else {
         draw_text(
             "Mass Driver: OFFLINE",
-            screen_w - 200.0, 35.0,
-            Dimensions::FONT_SIZE_NORMAL,
+            screen_w - 320.0,
+            50.0,
+            12.0,
             Colors::TEXT_DIM,
         );
     }
 
     // Draw sun at center
     let center_x = screen_w / 2.0;
-    let center_y = screen_h / 2.0;
+    let center_y = screen_h / 2.0 + 20.0;
 
     // Sun glow
     draw_circle(center_x, center_y, 50.0, Color::new(1.0, 0.8, 0.2, 0.2));
@@ -123,6 +131,22 @@ pub fn render_interplanetary_view(
     let planets = get_planets();
     let mut hovered_planet: Option<usize> = None;
     let mut action = InterplanetaryAction::None;
+
+    // Left planet list
+    let list_x = 16.0;
+    let list_y = header_height + 12.0;
+    let list_w = 220.0;
+    let list_h = screen_h - list_y - 80.0;
+    draw_panel(list_x, list_y, list_w, list_h);
+    draw_text("Planets", list_x + 12.0, list_y + 28.0, 16.0, Colors::PRIMARY);
+    let mut list_row_y = list_y + 56.0;
+    for (index, planet) in planets.iter().enumerate() {
+        let is_current = index == current_planet;
+        let is_colonized = colonized_planets.get(index).copied().unwrap_or(false);
+        let label_color = if is_current { Colors::PRIMARY } else if is_colonized { Colors::SUCCESS } else { Colors::TEXT_DIM };
+        draw_text(planet.name, list_x + 12.0, list_row_y, 13.0, label_color);
+        list_row_y += 20.0;
+    }
 
     for (i, planet) in planets.iter().enumerate() {
         // Draw orbit
@@ -172,53 +196,55 @@ pub fn render_interplanetary_view(
     }
 
     // Info panel for hovered planet
-    if let Some(i) = hovered_planet {
-        let planet = &planets[i];
-        let is_colonized = colonized_planets.get(i).copied().unwrap_or(false);
-        let is_current = i == current_planet;
+    if let Some(index) = hovered_planet {
+        let planet = &planets[index];
+        let is_colonized = colonized_planets.get(index).copied().unwrap_or(false);
+        let is_current = index == current_planet;
 
-        let panel_x = 10.0;
-        let panel_y = screen_h - 180.0;
-        draw_panel(panel_x, panel_y, 280.0, 170.0);
+        let panel_w = 300.0;
+        let panel_h = 200.0;
+        let panel_x = screen_w - panel_w - 16.0;
+        let panel_y = header_height + 12.0;
+        draw_panel(panel_x, panel_y, panel_w, panel_h);
 
-        draw_text(planet.name, panel_x + 15.0, panel_y + 30.0, 24.0, planet.color);
-        draw_text(planet.description, panel_x + 15.0, panel_y + 55.0, 14.0, Colors::TEXT);
+        draw_text(planet.name, panel_x + 15.0, panel_y + 30.0, 20.0, planet.color);
+        draw_text(planet.description, panel_x + 15.0, panel_y + 55.0, 13.0, Colors::TEXT);
         draw_text(planet.difficulty, panel_x + 15.0, panel_y + 75.0, 12.0, Colors::TEXT_DIM);
 
         if is_colonized {
-            draw_text("Status: COLONIZED", panel_x + 15.0, panel_y + 100.0, 14.0, Colors::SUCCESS);
+            draw_text("Status: COLONIZED", panel_x + 15.0, panel_y + 105.0, 13.0, Colors::SUCCESS);
         } else {
-            draw_text("Status: Unexplored", panel_x + 15.0, panel_y + 100.0, 14.0, Colors::WARNING);
+            draw_text("Status: Unexplored", panel_x + 15.0, panel_y + 105.0, 13.0, Colors::WARNING);
         }
 
         if is_current {
-            draw_text("(Current Location)", panel_x + 15.0, panel_y + 120.0, 12.0, Colors::PRIMARY);
+            draw_text("(Current Location)", panel_x + 15.0, panel_y + 125.0, 11.0, Colors::PRIMARY);
         } else if has_mass_driver && !is_colonized {
-            draw_text("Click to launch probe", panel_x + 15.0, panel_y + 140.0, 14.0, Colors::SUCCESS);
+            draw_text("Click to launch probe", panel_x + 15.0, panel_y + 150.0, 12.0, Colors::SUCCESS);
         } else if !has_mass_driver && !is_colonized {
-            draw_text("Requires: Mass Driver", panel_x + 15.0, panel_y + 140.0, 12.0, Colors::ERROR);
+            draw_text("Requires: Mass Driver", panel_x + 15.0, panel_y + 150.0, 11.0, Colors::ERROR);
         } else if is_colonized && !is_current {
-            draw_text("Click to travel", panel_x + 15.0, panel_y + 140.0, 14.0, Colors::PRIMARY);
+            draw_text("Click to travel", panel_x + 15.0, panel_y + 150.0, 12.0, Colors::PRIMARY);
         }
 
         // Handle click
         if is_mouse_button_pressed(MouseButton::Left) {
             if is_colonized && !is_current {
-                action = InterplanetaryAction::SelectPlanet(i);
+                action = InterplanetaryAction::SelectPlanet(index);
             } else if has_mass_driver && !is_colonized {
-                action = InterplanetaryAction::LaunchMassDriver(i);
+                action = InterplanetaryAction::LaunchMassDriver(index);
             }
         }
     }
 
     // Legend
-    draw_panel(screen_w - 180.0, screen_h - 100.0, 170.0, 90.0);
-    draw_circle(screen_w - 165.0, screen_h - 75.0, 6.0, Colors::SUCCESS);
-    draw_text("Colonized", screen_w - 150.0, screen_h - 70.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(screen_w - 165.0, screen_h - 55.0, 6.0, Colors::WARNING);
-    draw_text("Unexplored", screen_w - 150.0, screen_h - 50.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(screen_w - 165.0, screen_h - 35.0, 6.0, Colors::PRIMARY);
-    draw_text("Current", screen_w - 150.0, screen_h - 30.0, 12.0, Colors::TEXT_DIM);
+    draw_panel(screen_w - 190.0, screen_h - 110.0, 180.0, 100.0);
+    draw_circle(screen_w - 175.0, screen_h - 85.0, 6.0, Colors::SUCCESS);
+    draw_text("Colonized", screen_w - 160.0, screen_h - 80.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(screen_w - 175.0, screen_h - 65.0, 6.0, Colors::WARNING);
+    draw_text("Unexplored", screen_w - 160.0, screen_h - 60.0, 12.0, Colors::TEXT_DIM);
+    draw_circle(screen_w - 175.0, screen_h - 45.0, 6.0, Colors::PRIMARY);
+    draw_text("Current", screen_w - 160.0, screen_h - 40.0, 12.0, Colors::TEXT_DIM);
 
     // Instructions
     draw_text(

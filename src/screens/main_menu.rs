@@ -1,7 +1,7 @@
 //! Main menu screen
 
 use macroquad::prelude::*;
-use crate::ui::{Colors, Dimensions, draw_button, draw_panel};
+use crate::ui::{Colors, Dimensions, draw_button_sized, draw_panel};
 
 /// Actions that can be taken from the main menu
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,67 +24,84 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
     let time_seconds = get_time() as f32;
     let float_y = (time_seconds * 1.2).sin() * 6.0;
 
+    // Ambient glow
+    draw_circle(screen_w * 0.2, screen_h * 0.8, 220.0, Color::new(0.0, 0.3, 0.4, 0.1));
+    draw_circle(screen_w * 0.75, screen_h * 0.25, 160.0, Color::new(0.0, 0.2, 0.35, 0.12));
+
     // Title
     let title = "NANITE SWARM";
-    let title_size = measure_text(title, None, 48, 1.0);
+    let _title_size = measure_text(title, None, 48, 1.0);
     draw_text(
         title,
-        (screen_w - title_size.width) / 2.0,
-        screen_h * 0.25 + float_y,
+        40.0,
+        80.0 + float_y,
         48.0,
         Colors::PRIMARY,
     );
 
     // Subtitle
     let subtitle = "Consume. Evolve. Expand.";
-    let sub_size = measure_text(subtitle, None, Dimensions::FONT_SIZE_NORMAL as u16, 1.0);
+    let _sub_size = measure_text(subtitle, None, Dimensions::FONT_SIZE_NORMAL as u16, 1.0);
     draw_text(
         subtitle,
-        (screen_w - sub_size.width) / 2.0,
-        screen_h * 0.25 + 40.0 + float_y * 0.5,
+        40.0,
+        110.0 + float_y * 0.5,
         Dimensions::FONT_SIZE_NORMAL,
         Colors::TEXT_DIM,
     );
 
+    // Briefing panel
+    let briefing_w = 360.0;
+    let briefing_h = 220.0;
+    let briefing_x = 40.0;
+    let briefing_y = 160.0;
+    draw_panel(briefing_x, briefing_y, briefing_w, briefing_h);
+    draw_text("Mission Briefing", briefing_x + 16.0, briefing_y + 28.0, 18.0, Colors::PRIMARY);
+    draw_text("Build a self-sustaining nanite colony.", briefing_x + 16.0, briefing_y + 58.0, 13.0, Colors::TEXT);
+    draw_text("Expand power, automate drills, and research.", briefing_x + 16.0, briefing_y + 78.0, 12.0, Colors::TEXT_DIM);
+    draw_text("Short sprints. Clear milestones.", briefing_x + 16.0, briefing_y + 98.0, 12.0, Colors::TEXT_DIM);
+    draw_text("Tip: Click building cards to enter build mode.", briefing_x + 16.0, briefing_y + 130.0, 11.0, Colors::PRIMARY_SOFT);
+
     // Menu panel
-    let panel_w = 300.0;
-    let panel_h = 300.0;
-    let panel_x = (screen_w - panel_w) / 2.0;
-    let panel_y = screen_h * 0.4 + float_y * 0.3;
+    let panel_w = 320.0;
+    let panel_h = 340.0;
+    let panel_x = screen_w - panel_w - 60.0;
+    let panel_y = screen_h * 0.3 + float_y * 0.2;
     draw_panel(panel_x, panel_y, panel_w, panel_h);
+    draw_text("Command Menu", panel_x + 18.0, panel_y + 30.0, 18.0, Colors::PRIMARY);
 
     // Buttons
     let btn_w = panel_w - 40.0;
     let btn_x = panel_x + 20.0;
-    let mut btn_y = panel_y + 20.0;
-    let btn_spacing = 50.0;
+    let mut btn_y = panel_y + 60.0;
+    let btn_spacing = 46.0;
 
-    if draw_button(btn_x, btn_y, btn_w, "New Game") {
+    if draw_button_sized(btn_x, btn_y, btn_w, 36.0, "New Game") {
         return MenuAction::NewGame;
     }
     btn_y += btn_spacing;
 
-    if has_save && draw_button(btn_x, btn_y, btn_w, "Continue") {
+    if has_save && draw_button_sized(btn_x, btn_y, btn_w, 36.0, "Continue") {
         return MenuAction::Continue;
     }
     btn_y += btn_spacing;
 
-    if draw_button(btn_x, btn_y, btn_w, "Load") {
+    if draw_button_sized(btn_x, btn_y, btn_w, 36.0, "Load") {
         return MenuAction::Load;
     }
     btn_y += btn_spacing;
 
-    if has_save && draw_button(btn_x, btn_y, btn_w, "Save") {
+    if has_save && draw_button_sized(btn_x, btn_y, btn_w, 36.0, "Save") {
         return MenuAction::Save;
     }
     btn_y += btn_spacing;
 
-    if draw_button(btn_x, btn_y, btn_w, "Settings") {
+    if draw_button_sized(btn_x, btn_y, btn_w, 36.0, "Settings") {
         return MenuAction::Settings;
     }
     btn_y += btn_spacing;
 
-    if draw_button(btn_x, btn_y, btn_w, "Quit") {
+    if draw_button_sized(btn_x, btn_y, btn_w, 36.0, "Quit") {
         return MenuAction::Quit;
     }
 
