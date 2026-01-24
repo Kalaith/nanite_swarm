@@ -9,6 +9,8 @@ pub enum MenuAction {
     None,
     NewGame,
     Continue,
+    Load,
+    Save,
     Settings,
     Quit,
 }
@@ -19,6 +21,8 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
 
     let screen_w = screen_width();
     let screen_h = screen_height();
+    let time_seconds = get_time() as f32;
+    let float_y = (time_seconds * 1.2).sin() * 6.0;
 
     // Title
     let title = "NANITE SWARM";
@@ -26,7 +30,7 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
     draw_text(
         title,
         (screen_w - title_size.width) / 2.0,
-        screen_h * 0.25,
+        screen_h * 0.25 + float_y,
         48.0,
         Colors::PRIMARY,
     );
@@ -37,16 +41,16 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
     draw_text(
         subtitle,
         (screen_w - sub_size.width) / 2.0,
-        screen_h * 0.25 + 40.0,
+        screen_h * 0.25 + 40.0 + float_y * 0.5,
         Dimensions::FONT_SIZE_NORMAL,
         Colors::TEXT_DIM,
     );
 
     // Menu panel
     let panel_w = 300.0;
-    let panel_h = 220.0;
+    let panel_h = 300.0;
     let panel_x = (screen_w - panel_w) / 2.0;
-    let panel_y = screen_h * 0.4;
+    let panel_y = screen_h * 0.4 + float_y * 0.3;
     draw_panel(panel_x, panel_y, panel_w, panel_h);
 
     // Buttons
@@ -62,6 +66,16 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
 
     if has_save && draw_button(btn_x, btn_y, btn_w, "Continue") {
         return MenuAction::Continue;
+    }
+    btn_y += btn_spacing;
+
+    if draw_button(btn_x, btn_y, btn_w, "Load") {
+        return MenuAction::Load;
+    }
+    btn_y += btn_spacing;
+
+    if has_save && draw_button(btn_x, btn_y, btn_w, "Save") {
+        return MenuAction::Save;
     }
     btn_y += btn_spacing;
 

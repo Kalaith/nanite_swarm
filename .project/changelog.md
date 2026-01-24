@@ -10,7 +10,49 @@
 ## [Unreleased]
 
 ### Added
+- Enforced non-overlapping conduit placement
+- Bridge tiles for conduit crossings
+- Invalid placement feedback for blocked placements
+- Power transmission range with repeater nodes
+- Conduit auto-routing with obstacle avoidance
+- Research progress system with active topic and progress bar
+- Sell button for buildings with partial refunds
+
+### Fixed
+- (empty)
+
+---
+
+## [1.0.0] - 2026-01-24
+
+### Added
 - Planetary hazards system (dust, acid rain, cryo effects)
+- Evolving Core visual stages in planetary view
+- Particle effects for drone movement and resource delivery
+- Animated UI elements and hover pulses across screens
+- Planetary background visuals (starfield and glow)
+- Refined UI palette and panel/button styling
+- Battery system with 4-hour capacity and UI readout
+- Hibernation mode that throttles simulation after battery depletion
+- Offline progress simulation during load
+- Offline progress banner on load
+- Added unit test for offline progression timing
+- Drag-to-place building placement
+- In-game help overlay and expanded controls hints
+- Settings menu with basic preferences
+- Save/load UI and file persistence hook
+- Achievements tracking panel with milestone unlocks
+- Visible-range grid rendering for large maps
+- BFS-based drone pathfinding with terrain avoidance
+- Batched drone resource deliveries
+- WASM size optimization via rustflags and optional wasm-opt
+- Optional FPS display for performance validation
+- Updated WebGL index page and deployment script
+- Dry-run deployment test for Windows and WebGL packaging
+- Final build packages created in dist/
+
+### Fixed
+- WASM build support by enabling getrandom JS backend
 
 ---
 

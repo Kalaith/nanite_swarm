@@ -27,6 +27,7 @@ pub fn render_research_view(
     let screen_h = screen_height();
     let center_x = screen_w / 2.0;
     let center_y = screen_h / 2.0 - 50.0;
+    let pulse = (get_time() as f32 * 2.0).sin().abs();
 
     // Header
     draw_panel(0.0, 0.0, screen_w, 50.0);
@@ -38,6 +39,19 @@ pub fn render_research_view(
         Dimensions::FONT_SIZE_NORMAL,
         Colors::PRIMARY,
     );
+
+    if let Some(current) = &research_state.current_research {
+        if let Some(node) = research_tree.get_node(current) {
+            let progress = research_state.research_progress.min(node.data_cost);
+            let pct = if node.data_cost > 0.0 { progress / node.data_cost } else { 1.0 };
+            let bar_w = 220.0;
+            let bar_x = screen_w * 0.5 - bar_w * 0.5;
+            let bar_y = 18.0;
+            draw_rectangle(bar_x, bar_y, bar_w, 10.0, Colors::SURFACE);
+            draw_rectangle(bar_x, bar_y, bar_w * pct, 10.0, Colors::PRIMARY);
+            draw_text(&format!("Research: {}", node.name), bar_x, bar_y - 4.0, 12.0, Colors::TEXT_DIM);
+        }
+    }
 
     // Get mouse position
     let (mouse_x, mouse_y) = mouse_position();
@@ -66,15 +80,16 @@ pub fn render_research_view(
 
     // Draw nodes
     for node in &research_tree.nodes {
-        let x = center_x + node.position.0 * GRID_SCALE;
-        let y = center_y - node.position.1 * GRID_SCALE;
+        let node_x = center_x + node.position.0 * GRID_SCALE;
+        let node_y = center_y - node.position.1 * GRID_SCALE;
 
         let is_unlocked = research_state.is_unlocked(&node.id);
-        let can_research = research_tree.can_research(&node.id, &research_state.unlocked, data_available);
+        let can_select = research_tree.can_select(&node.id, &research_state.unlocked);
+        let can_research_now = research_tree.can_research(&node.id, &research_state.unlocked, data_available);
         let is_current = research_state.current_research.as_ref() == Some(&node.id);
 
         // Check if mouse is hovering
-        let dist = ((mouse_x - x).powi(2) + (mouse_y - y).powi(2)).sqrt();
+        let dist = ((mouse_x - node_x).powi(2) + (mouse_y - node_y).powi(2)).sqrt();
         let is_hovered = dist < NODE_RADIUS;
         if is_hovered {
             hovered_node = Some(&node.id);
@@ -85,38 +100,42 @@ pub fn render_research_view(
             (Colors::PRIMARY, Colors::PRIMARY)
         } else if is_current {
             (Color::new(0.0, 0.5, 0.7, 1.0), Colors::WARNING)
-        } else if can_research {
+        } else if can_research_now {
             (Colors::SURFACE, Colors::SUCCESS)
+        } else if can_select {
+            (Colors::SURFACE, Colors::PRIMARY_SOFT)
         } else {
             (Colors::SURFACE, Colors::SECONDARY)
         };
 
         // Draw glow for unlocked nodes
         if is_unlocked {
-            draw_circle(x, y, NODE_RADIUS + 8.0, Color::new(0.0, 0.85, 1.0, 0.2));
-            draw_circle(x, y, NODE_RADIUS + 4.0, Color::new(0.0, 0.85, 1.0, 0.3));
+            let glow_outer = NODE_RADIUS + 6.0 + pulse * 3.0;
+            let glow_inner = NODE_RADIUS + 3.0 + pulse * 1.5;
+            draw_circle(node_x, node_y, glow_outer, Color::new(0.0, 0.85, 1.0, 0.18 + pulse * 0.08));
+            draw_circle(node_x, node_y, glow_inner, Color::new(0.0, 0.85, 1.0, 0.25 + pulse * 0.1));
         }
 
         // Draw node
-        draw_circle(x, y, NODE_RADIUS, fill_color);
-        draw_circle_lines(x, y, NODE_RADIUS, 2.0, border_color);
+        draw_circle(node_x, node_y, NODE_RADIUS, fill_color);
+        draw_circle_lines(node_x, node_y, NODE_RADIUS, 2.0, border_color);
 
         // Hover effect
         if is_hovered {
-            draw_circle_lines(x, y, NODE_RADIUS + 5.0, 2.0, Colors::PRIMARY);
+            draw_circle_lines(node_x, node_y, NODE_RADIUS + 5.0 + pulse * 2.0, 2.0, Colors::PRIMARY);
         }
 
         // Draw abbreviated name
         let abbrev = &node.name[..node.name.len().min(6)];
         let text_size = measure_text(abbrev, None, 12, 1.0);
         let text_color = if is_unlocked { Colors::BACKGROUND } else { Colors::TEXT };
-        draw_text(abbrev, x - text_size.width / 2.0, y + 4.0, 12.0, text_color);
+        draw_text(abbrev, node_x - text_size.width / 2.0, node_y + 4.0, 12.0, text_color);
 
         // Draw cost below if not unlocked
         if !is_unlocked && node.data_cost > 0.0 {
             let cost_str = format!("{:.0}", node.data_cost);
-            let cost_color = if can_research { Colors::SUCCESS } else { Colors::TEXT_DIM };
-            draw_text(&cost_str, x - 10.0, y + NODE_RADIUS + 15.0, 12.0, cost_color);
+            let cost_color = if can_research_now { Colors::SUCCESS } else { Colors::TEXT_DIM };
+            draw_text(&cost_str, node_x - 10.0, node_y + NODE_RADIUS + 15.0, 12.0, cost_color);
         }
     }
 
@@ -134,8 +153,12 @@ pub fn render_research_view(
                 let cost_text = format!("Cost: {:.0} Data", node.data_cost);
                 draw_text(&cost_text, tooltip_x + 15.0, tooltip_y + 80.0, 14.0, Colors::ACCENT);
 
-                if research_tree.can_research(node_id, &research_state.unlocked, data_available) {
-                    draw_text("Click to research", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::SUCCESS);
+                if research_tree.can_select(node_id, &research_state.unlocked) {
+                    if research_tree.can_research(node_id, &research_state.unlocked, data_available) {
+                        draw_text("Click to research", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::SUCCESS);
+                    } else {
+                        draw_text("Click to select (insufficient Data)", tooltip_x + 15.0, tooltip_y + 100.0, 12.0, Colors::WARNING);
+                    }
                 } else if !node.prerequisites.iter().all(|p| research_state.is_unlocked(p)) {
                     draw_text("Prerequisites not met", tooltip_x + 15.0, tooltip_y + 100.0, 14.0, Colors::ERROR);
                 } else {
@@ -164,7 +187,7 @@ pub fn render_research_view(
     // Click to research
     if is_mouse_button_pressed(MouseButton::Left) {
         if let Some(node_id) = hovered_node {
-            if research_tree.can_research(node_id, &research_state.unlocked, data_available) {
+            if research_tree.can_select(node_id, &research_state.unlocked) {
                 return ResearchAction::StartResearch(node_id.to_string());
             }
         }

@@ -13,7 +13,7 @@
 Traditional idle games require constant manual clicking and lose progress when advancing to new content. Players want engaging automation games that respect their time while providing meaningful progression and strategic depth. The market lacks sophisticated logistics strategy games that combine idle mechanics with spatial puzzle-solving and interplanetary resource management.
 
 ### Solution
-Nanite Swarm is a self-replicating AI simulation where players control an artificial intelligence that consumes planetary bodies. The game features automatic resource gathering, complex logistics puzzles, and persistent interplanetary progression without losing progress between worlds.
+Nanite Swarm is a self-replicating AI simulation where players control an artificial intelligence that consumes planetary bodies. The MVP focuses on a complete, polished **Planet 1** experience with automation, logistics puzzles, terrain tradeoffs, and research. **Interplanetary progression is post‑MVP** and will be introduced after Planet 1 is stable and balanced.
 
 ### Target Users
 - **Primary:** Strategy game enthusiasts aged 25-45 who enjoy automation, resource management, and puzzle-solving
@@ -74,7 +74,7 @@ Resource pipes cannot overlap, creating spatial puzzles where players must strat
 ---
 
 #### Feature 3: Interplanetary Progression
-**Priority:** P0 (Must Have)
+**Priority:** P1 (Post‑MVP)
 
 **Description:**
 Players maintain progress when moving between planets, using resources from conquered worlds to fuel colonization of more difficult planets.
@@ -163,6 +163,12 @@ AI continues running at reduced speed during player absence, with battery life m
 #### Feature 8: Visual Core Evolution
 **Priority:** P2 (Nice to Have)
 
+---
+
+### MVP Scope Clarification
+- **MVP includes:** Single planet (Planet 1), full core loop, research, logistics puzzle rules, terrain tradeoffs, and offline progression.
+- **MVP excludes:** Interplanetary progression, multi‑planet hazards, and resource transfer between worlds.
+
 **Description:**
 The central AI structure visually transforms as the tech tree advances, from crash-lander pod to planetary ring.
 
@@ -183,13 +189,13 @@ The central AI structure visually transforms as the tech tree advances, from cra
 - Building placement interface
 - Resource flow visualization
 - Drone activity indicators
-- Research neural network overlay
+- Visible research button in the HUD (plus hotkey)
 
 **User Actions:**
 - Drag to place buildings and pipes -> Auto-routing with visual feedback
 - Click terrain tiles -> Show utilization options
 - Hover over buildings -> Display stats and production rates
-- Research button -> Open neural network view
+- Research button (and hotkey) -> Open neural network view
 
 ---
 
@@ -339,6 +345,7 @@ The central AI structure visually transforms as the tech tree advances, from cra
 |---------|------|--------|---------|
 | 1.0 | 2026-01-24 | AI Assistant | Initial PRD creation based on GDD specifications |
 | 0.1 | 2026-01-24 | AI Assistant | Draft structure and core feature identification |
+| 1.1 | 2026-01-24 | AI Assistant | Clarify MVP scope to Planet 1; move interplanetary to post‑MVP; require visible research button |
 
 ---
 

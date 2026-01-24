@@ -3,13 +3,12 @@
 > **CRITICAL INSTRUCTIONS FOR ENGINEERS**
 >
 > ## Project Structure
-> All project documentation lives in the `.project/` directory at the repository root:
 > ```
 > .project/
-> ├── prd.md           # Product Requirements Document
-> ├── tech-stack.md    # Technology choices and rationale
-> ├── build-plan.md    # This file - task tracking
-> └── changelog.md     # Version history and updates
+> |-- prd.md           # Product Requirements Document
+> |-- tech-stack.md    # Technology choices and rationale
+> |-- build-plan.md    # This file - task tracking
+> |-- changelog.md     # Version history and updates
 > ```
 >
 > ## Build Discipline
@@ -47,13 +46,18 @@
 ## Project Progress Summary
 
 ```
-Phase 1: Project Setup         [████████████████████] 100%  ✅
-Phase 2: Core Infrastructure   [████████████████████] 100%  ✅
-Phase 3: Grid & Automation     [████████████████████] 100%  ✅
-Phase 4: Advanced Systems      [████████████████████] 100%  ✅
-Phase 5: Polish & Deployment   [░░░░░░░░░░░░░░░░░░░░]   0%  ⬜
-─────────────────────────────────────────────────────────
-Overall Progress               [████████████████░░░░]  80%
+Phase 1: Project Setup         [####################] 100%  DONE
+Phase 2: Core Infrastructure   [####################] 100%  DONE
+Phase 3: Grid & Automation     [####################] 100%  DONE
+Phase 4: Advanced Systems      [####################] 100%  DONE
+Phase 5: Polish & Deployment   [####################] 100%  DONE
+Phase 6: Core Loop Completion  [####################] 100%  DONE
+Phase 7: Interplanetary MVP    [....................]   0%  TODO
+Phase 8: Research/Terrain      [....................]   0%  TODO
+Phase 9: MVP Content Slice     [....................]   0%  TODO
+Phase 10: MVP Stabilization    [....................]   0%  TODO
+------------------------------------------------------------
+Overall Progress               [#################...]  84%
 ```
 
 | Phase | Tasks | Completed | Blocked | Deferred | Progress |
@@ -62,8 +66,13 @@ Overall Progress               [████████████████
 | Phase 2: Core Infrastructure | 24 | 24 | 0 | 0 | 100% |
 | Phase 3: Grid & Automation | 30 | 30 | 0 | 0 | 100% |
 | Phase 4: Advanced Systems | 20 | 20 | 0 | 0 | 100% |
-| Phase 5: Polish & Deployment | 12 | 0 | 0 | 0 | 0% |
-| **Total** | **98** | **86** | **0** | **0** | **88%** |
+| Phase 5: Polish & Deployment | 30 | 30 | 0 | 0 | 100% |
+| Phase 6: Core Loop Completion | 6 | 6 | 0 | 0 | 100% |
+| Phase 7: Interplanetary MVP | 6 | 0 | 0 | 0 | 0% |
+| Phase 8: Research/Terrain | 6 | 0 | 0 | 0 | 0% |
+| Phase 9: MVP Content Slice | 6 | 0 | 0 | 0 | 0% |
+| Phase 10: MVP Stabilization | 6 | 0 | 0 | 0 | 0% |
+| **Total** | **146** | **122** | **0** | **0** | **84%** |
 
 ---
 
@@ -265,56 +274,142 @@ Overall Progress               [████████████████
 
 | Status | Task | Description |
 |--------|------|-------------|
-| ⬜ | 5.1.1 | Implement evolving Core visual stages |
-| ⬜ | 5.1.2 | Add particle effects for drones and resources |
-| ⬜ | 5.1.3 | Create smooth animations and transitions |
-| ⬜ | 5.1.4 | Add background planetary visuals |
-| ⬜ | 5.1.5 | Implement final color palette and styling |
-| ⬜ | 5.1.6 | **BUILD CHECK** - Verify visual polish is complete |
+| ✅ | 5.1.1 | Implement evolving Core visual stages |
+| ✅ | 5.1.2 | Add particle effects for drones and resources |
+| ✅ | 5.1.3 | Create smooth animations and transitions |
+| ✅ | 5.1.4 | Add background planetary visuals |
+| ✅ | 5.1.5 | Implement final color palette and styling |
+| ✅ | 5.1.6 | **BUILD CHECK** - Verify visual polish is complete |
 
 ### 5.2 Offline Mechanics
 
 | Status | Task | Description |
 |--------|------|-------------|
-| ⬜ | 5.2.1 | Implement 4-hour battery system |
-| ⬜ | 5.2.2 | Add hibernation mode (10% speed after 4 hours) |
-| ⬜ | 5.2.3 | Create offline progress calculation |
-| ⬜ | 5.2.4 | Add offline progress display on load |
-| ⬜ | 5.2.5 | Test offline progression accuracy |
-| ⬜ | 5.2.6 | **BUILD CHECK** - Verify offline mechanics work |
+| ✅ | 5.2.1 | Implement 4-hour battery system |
+| ✅ | 5.2.2 | Add hibernation mode (10% speed after 4 hours) |
+| ✅ | 5.2.3 | Create offline progress calculation |
+| ✅ | 5.2.4 | Add offline progress display on load |
+| ✅ | 5.2.5 | Test offline progression accuracy |
+| ✅ | 5.2.6 | **BUILD CHECK** - Verify offline mechanics work |
 
 ### 5.3 UI/UX Refinement
 
 | Status | Task | Description |
 |--------|------|-------------|
-| ⬜ | 5.3.1 | Implement smart drag building placement |
-| ⬜ | 5.3.2 | Add comprehensive tooltips and help system |
-| ⬜ | 5.3.3 | Create settings and preferences menu |
-| ⬜ | 5.3.4 | Implement save/load UI in main menu |
-| ⬜ | 5.3.5 | Add achievement and progress tracking |
-| ⬜ | 5.3.6 | **BUILD CHECK** - Verify UI is intuitive and complete |
+| ✅ | 5.3.1 | Implement smart drag building placement |
+| ✅ | 5.3.2 | Add comprehensive tooltips and help system |
+| ✅ | 5.3.3 | Create settings and preferences menu |
+| ✅ | 5.3.4 | Implement save/load UI in main menu |
+| ✅ | 5.3.5 | Add achievement and progress tracking |
+| ✅ | 5.3.6 | **BUILD CHECK** - Verify UI is intuitive and complete |
 
 ### 5.4 Performance Optimization
 
 | Status | Task | Description |
 |--------|------|-------------|
-| ⬜ | 5.4.1 | Optimize grid rendering for large maps |
-| ⬜ | 5.4.2 | Implement efficient drone pathfinding |
-| ⬜ | 5.4.3 | Add resource flow batching |
-| ⬜ | 5.4.4 | Optimize WASM build size |
-| ⬜ | 5.4.5 | Test performance on target hardware |
-| ⬜ | 5.4.6 | **BUILD CHECK** - Verify 60 FPS and <200MB memory |
+| ✅ | 5.4.1 | Optimize grid rendering for large maps |
+| ✅ | 5.4.2 | Implement efficient drone pathfinding |
+| ✅ | 5.4.3 | Add resource flow batching |
+| ✅ | 5.4.4 | Optimize WASM build size |
+| ✅ | 5.4.5 | Test performance on target hardware |
+| ✅ | 5.4.6 | **BUILD CHECK** - Verify 60 FPS and <200MB memory |
 
 ### 5.5 Deployment & Launch
 
 | Status | Task | Description |
 |--------|------|-------------|
-| ⬜ | 5.5.1 | Create publish.ps1 deployment script |
-| ⬜ | 5.5.2 | Set up index.html for WebGL hosting |
-| ⬜ | 5.5.3 | Test deployment on multiple platforms |
-| ⬜ | 5.5.4 | Create final build and packaging |
-| ⬜ | 5.5.5 | Update changelog with v1.0.0 release |
-| ⬜ | 5.5.6 | **FINAL BUILD CHECK** - Verify production deployment works |
+| ✅ | 5.5.1 | Create publish.ps1 deployment script |
+| ✅ | 5.5.2 | Set up index.html for WebGL hosting |
+| ✅ | 5.5.3 | Test deployment on multiple platforms |
+| ✅ | 5.5.4 | Create final build and packaging |
+| ✅ | 5.5.5 | Update changelog with v1.0.0 release |
+| ✅ | 5.5.6 | **FINAL BUILD CHECK** - Verify production deployment works |
+
+---
+
+
+## Phase 6: Core Loop Completion (MVP P0)
+
+### 6.1 Logistics Puzzle Rules
+
+| Status | Task | Description |
+|--------|------|-------------|
+| DONE | 6.1.1 | Enforce non-overlapping conduits (placement validation) |
+| DONE | 6.1.2 | Add bridge tiles for crossing resource lines |
+| DONE | 6.1.3 | Implement invalid placement feedback for pipes |
+| DONE | 6.1.4 | Add power transmission distance + repeater nodes |
+| DONE | 6.1.5 | Implement conduit auto-routing with obstacle avoidance |
+| DONE | 6.1.6 | **BUILD CHECK** - Verify logistics puzzle rules |
+
+---
+
+## Phase 7: Interplanetary MVP (P0)
+
+### 7.1 Persistence & Transfer
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 7.1.1 | Persist planet states across travel |
+| TODO | 7.1.2 | Implement mass driver export queues |
+| TODO | 7.1.3 | Implement interplanetary resource import |
+| TODO | 7.1.4 | Apply planetary bonuses across worlds |
+| TODO | 7.1.5 | Add interplanetary UI for transfer schedules |
+| TODO | 7.1.6 | **BUILD CHECK** - Verify interplanetary progression |
+
+---
+
+## Phase 8: Research + Terrain Depth (P0)
+
+### 8.1 Research Gating & Terrain Tradeoffs
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 8.1.1 | Gate bridges/repeaters/mass driver behind research |
+| TODO | 8.1.2 | Tune research costs and prerequisite chains |
+| TODO | 8.1.3 | Add server bank heat/penalty system (minimal) |
+| TODO | 8.1.4 | Implement terrain tradeoffs impacting economy |
+| TODO | 8.1.5 | Update tooltips with terrain/research tradeoffs |
+| TODO | 8.1.6 | **BUILD CHECK** - Verify research/terrain loop |
+
+---
+
+## Phase 9: MVP Content Slice
+
+### 9.1 Planet 1 (Mars-like)
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 9.1.1 | Tune Mars constraints (wind power, low solar) |
+| TODO | 9.1.2 | Implement dust accumulation hazard (minimal) |
+
+### 9.2 Planet 2 (Venus-like)
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 9.2.1 | Implement Venus constraints (geothermal, void gaps) |
+| TODO | 9.2.2 | Implement acid rain hazard (pipe decay) |
+
+### 9.3 Balance & Pacing
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 9.3.1 | Balance 20-30 minute early-game pacing |
+| TODO | 9.3.2 | **BUILD CHECK** - Verify two-planet MVP slice |
+
+---
+
+## Phase 10: MVP Stabilization & Release Candidate
+
+### 10.1 Save/Load + UX Stability
+
+| Status | Task | Description |
+|--------|------|-------------|
+| TODO | 10.1.1 | Implement autosave + save versioning |
+| TODO | 10.1.2 | Add save migration for schema changes |
+| TODO | 10.1.3 | Add onboarding prompts / first-session guide |
+| TODO | 10.1.4 | Bug bash + regression fixes |
+| TODO | 10.1.5 | Performance profiling on target devices |
+| TODO | 10.1.6 | **FINAL BUILD CHECK** - MVP release candidate |
 
 ---
 
@@ -351,5 +446,8 @@ See `.project/changelog.md` for detailed version history.
 ---
 
 *Last updated: 2026-01-24*
-*Current Phase: Phase 4 - Advanced Systems (Complete)*
-*Next Milestone: Phase 5 - Polish & Deployment*
+*Current Phase: Phase 7 - Interplanetary MVP (Not Started)*
+*Next Milestone: Phase 7 - Interplanetary MVP*
+
+
+

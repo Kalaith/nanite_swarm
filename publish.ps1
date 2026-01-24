@@ -14,6 +14,7 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = $PSScriptRoot
 $DistDir = Join-Path $ProjectRoot "dist"
 $CargoToml = Join-Path $ProjectRoot "Cargo.toml"
+$env:CARGO_TARGET_DIR = Join-Path $ProjectRoot "target"
 
 # Deployment paths
 $PreviewRoot = "H:\xampp\htdocs"
@@ -85,7 +86,7 @@ if ($buildWindows) {
     Write-Host "[$currentStep/$totalSteps] Packaging Windows build..." -ForegroundColor Yellow
     $WindowsPackageDir = Join-Path $DistDir "windows"
     New-Item -ItemType Directory -Path $WindowsPackageDir -Force | Out-Null
-    $ExePath = Join-Path $ProjectRoot "target\release\$ProjectName.exe"
+    $ExePath = Join-Path $env:CARGO_TARGET_DIR "release\$ProjectName.exe"
     if (-not (Test-Path $ExePath)) { Write-Error "Executable not found: $ExePath"; exit 1 }
     Copy-Item $ExePath $WindowsPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
@@ -104,6 +105,15 @@ if ($buildWebGL) {
         cargo build --release --target wasm32-unknown-unknown
         if ($LASTEXITCODE -ne 0) { Write-Error "WebGL build failed!"; exit 1 }
         Write-Host "WebGL build complete!" -ForegroundColor Green
+
+        $WasmPath = Join-Path $env:CARGO_TARGET_DIR "wasm32-unknown-unknown\release\$ProjectName.wasm"
+        $wasmOpt = Get-Command wasm-opt -ErrorAction SilentlyContinue
+        if ($wasmOpt -and (Test-Path $WasmPath)) {
+            Write-Host "Optimizing WASM with wasm-opt -Oz..." -ForegroundColor Yellow
+            wasm-opt -Oz -o $WasmPath $WasmPath
+        } else {
+            Write-Host "wasm-opt not found; skipping extra WASM optimization" -ForegroundColor Gray
+        }
     } else {
         Write-Host "[$currentStep/$totalSteps] Skipping WebGL build" -ForegroundColor Gray
     }
@@ -112,7 +122,7 @@ if ($buildWebGL) {
     Write-Host "[$currentStep/$totalSteps] Packaging WebGL build..." -ForegroundColor Yellow
     $WebGLPackageDir = Join-Path $DistDir "webgl"
     New-Item -ItemType Directory -Path $WebGLPackageDir -Force | Out-Null
-    $WasmPath = Join-Path $ProjectRoot "target\wasm32-unknown-unknown\release\$ProjectName.wasm"
+    $WasmPath = Join-Path $env:CARGO_TARGET_DIR "wasm32-unknown-unknown\release\$ProjectName.wasm"
     if (-not (Test-Path $WasmPath)) { Write-Error "WASM not found: $WasmPath"; exit 1 }
     Copy-Item $WasmPath $WebGLPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"

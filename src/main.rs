@@ -11,12 +11,13 @@ mod ui;
 mod screens;
 
 use engine::{ResearchTree, ResearchState};
-use state::PlanetState;
+use state::{PlanetState, save_to_file, load_from_file};
 use screens::{
     render_main_menu, MenuAction,
     render_planetary_view, PlanetaryAction,
     render_research_view, ResearchAction,
     render_interplanetary_view, InterplanetaryAction,
+    render_settings_menu, SettingsAction, Settings,
 };
 
 /// Game phases/screens
@@ -26,6 +27,7 @@ pub enum GamePhase {
     Playing,
     Research,
     Interplanetary,
+    Settings,
 }
 
 /// Main game state container
@@ -34,10 +36,14 @@ pub struct Game {
     planet_state: PlanetState,
     research_tree: ResearchTree,
     research_state: ResearchState,
+    settings: Settings,
     has_save: bool,
     current_planet_index: usize,
     colonized_planets: [bool; 5],
 }
+
+const SAVE_PATH: &str = "save.json";
+const RESEARCH_RATE: f32 = 5.0; // data per second
 
 impl Game {
     pub fn new() -> Self {
@@ -46,6 +52,7 @@ impl Game {
             planet_state: PlanetState::default(),
             research_tree: ResearchTree::default(),
             research_state: ResearchState::default(),
+            settings: Settings::default(),
             has_save: false,
             current_planet_index: 2, // Mars is starting planet
             colonized_planets: [false, false, true, false, false], // Mars colonized
@@ -69,16 +76,38 @@ impl Game {
                     MenuAction::Continue => {
                         self.phase = GamePhase::Playing;
                     }
-                    MenuAction::Settings => {}
+                    MenuAction::Load => {
+                        if let Ok(state) = load_from_file(SAVE_PATH) {
+                            self.planet_state = state;
+                            self.phase = GamePhase::Playing;
+                            self.has_save = true;
+                        }
+                    }
+                    MenuAction::Save => {
+                        let _ = save_to_file(&mut self.planet_state, SAVE_PATH);
+                        self.has_save = true;
+                    }
+                    MenuAction::Settings => {
+                        self.phase = GamePhase::Settings;
+                    }
                     MenuAction::Quit => {}
                     MenuAction::None => {}
+                }
+            }
+            GamePhase::Settings => {
+                match render_settings_menu(&mut self.settings) {
+                    SettingsAction::Back => {
+                        self.phase = GamePhase::MainMenu;
+                    }
+                    SettingsAction::None => {}
                 }
             }
             GamePhase::Playing => {
                 let delta = get_frame_time();
                 self.planet_state.update(delta);
+                self.update_research(delta);
 
-                match render_planetary_view(&mut self.planet_state) {
+                match render_planetary_view(&mut self.planet_state, self.settings.show_fps) {
                     PlanetaryAction::OpenResearch => {
                         self.phase = GamePhase::Research;
                     }
@@ -93,6 +122,8 @@ impl Game {
                 }
             }
             GamePhase::Research => {
+                let delta = get_frame_time();
+                self.update_research(delta);
                 match render_research_view(
                     &self.research_state,
                     &self.research_tree,
@@ -102,13 +133,11 @@ impl Game {
                         self.phase = GamePhase::Playing;
                     }
                     ResearchAction::StartResearch(tech_id) => {
-                        // Deduct cost and start research
-                        if let Some(node) = self.research_tree.get_node(&tech_id) {
-                            if self.planet_state.resources.data >= node.data_cost {
-                                self.planet_state.resources.data -= node.data_cost;
-                                self.research_state.unlocked.push(tech_id);
-                            }
-                        }
+                        let _ = self.research_state.start_research(
+                            &tech_id,
+                            &self.research_tree,
+                            self.planet_state.resources.data,
+                        );
                     }
                     ResearchAction::None => {}
                 }
@@ -146,6 +175,36 @@ impl Game {
                     InterplanetaryAction::None => {}
                 }
             }
+        }
+    }
+
+    fn update_research(&mut self, delta_time: f32) {
+        let Some(current_id) = self.research_state.current_research.clone() else {
+            return;
+        };
+        let Some(node) = self.research_tree.get_node(&current_id) else {
+            self.research_state.current_research = None;
+            self.research_state.research_progress = 0.0;
+            return;
+        };
+
+        let remaining = (node.data_cost - self.research_state.research_progress).max(0.0);
+        if remaining <= 0.0 {
+            self.research_state.complete_research();
+            return;
+        }
+
+        let available = self.planet_state.resources.data;
+        if available <= 0.0 {
+            return;
+        }
+
+        let spend = (RESEARCH_RATE * delta_time).min(available).min(remaining);
+        self.planet_state.resources.data -= spend;
+        self.research_state.research_progress += spend;
+
+        if self.research_state.research_progress >= node.data_cost {
+            self.research_state.complete_research();
         }
     }
 }

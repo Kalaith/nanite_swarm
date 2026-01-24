@@ -160,6 +160,21 @@ impl ResearchTree {
         }
     }
 
+    /// Check if a node can be selected for research (ignores current data)
+    pub fn can_select(&self, id: &str, unlocked: &[String]) -> bool {
+        if let Some(node) = self.get_node(id) {
+            if unlocked.contains(&node.id) {
+                return false;
+            }
+            if !node.prerequisites.iter().all(|p| unlocked.contains(p)) {
+                return false;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     /// Get all nodes that are available for research
     pub fn available_research(&self, unlocked: &[String], available_data: f32) -> Vec<&ResearchNode> {
         self.nodes
@@ -202,8 +217,8 @@ impl Default for ResearchState {
 
 impl ResearchState {
     /// Start researching a tech
-    pub fn start_research(&mut self, tech_id: &str, tree: &ResearchTree, available_data: f32) -> bool {
-        if tree.can_research(tech_id, &self.unlocked, available_data) {
+    pub fn start_research(&mut self, tech_id: &str, tree: &ResearchTree, _available_data: f32) -> bool {
+        if tree.can_select(tech_id, &self.unlocked) {
             self.current_research = Some(tech_id.to_string());
             self.research_progress = 0.0;
             true

@@ -1,6 +1,7 @@
 //! Spatial calculations, terrain, buildings, and pathfinding
 
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
 
 /// Grid position
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -122,6 +123,7 @@ pub enum BuildingType {
     Core,       // Central AI structure - receives resources
     Drill,      // Extracts minerals, spawns drones
     Conduit,    // Connects buildings for resource flow
+    Bridge,     // Allows conduit crossings (overlay)
     PowerNode,  // Extends power grid
     WindTurbine, // Generates power (bonus on mountains)
     ServerBank, // Generates data, consumes power
@@ -135,6 +137,7 @@ impl BuildingType {
             BuildingType::Core => (0.0, 0.0),        // Free (starting building)
             BuildingType::Drill => (20.0, 10.0),
             BuildingType::Conduit => (5.0, 2.0),
+            BuildingType::Bridge => (15.0, 5.0),
             BuildingType::PowerNode => (15.0, 5.0),
             BuildingType::WindTurbine => (25.0, 15.0),
             BuildingType::ServerBank => (40.0, 30.0),
@@ -147,6 +150,7 @@ impl BuildingType {
             BuildingType::Core => "Core",
             BuildingType::Drill => "Drill",
             BuildingType::Conduit => "Conduit",
+            BuildingType::Bridge => "Bridge",
             BuildingType::PowerNode => "Power Node",
             BuildingType::WindTurbine => "Wind Turbine",
             BuildingType::ServerBank => "Server Bank",
@@ -158,6 +162,7 @@ impl BuildingType {
         match self {
             BuildingType::Drill => Some('1'),
             BuildingType::Conduit => Some('2'),
+            BuildingType::Bridge => Some('6'),
             BuildingType::PowerNode => Some('3'),
             BuildingType::WindTurbine => Some('4'),
             BuildingType::ServerBank => Some('5'),
@@ -219,6 +224,8 @@ pub struct Tile {
     pub terrain: TerrainType,
     pub building: Option<Building>,
     pub revealed: bool,  // For fog of war / expansion
+    #[serde(default)]
+    pub bridge: bool,
 }
 
 impl Default for Tile {
@@ -227,6 +234,7 @@ impl Default for Tile {
             terrain: TerrainType::Empty,
             building: None,
             revealed: false,
+            bridge: false,
         }
     }
 }
@@ -240,6 +248,7 @@ pub struct Grid {
 }
 
 impl Grid {
+    const POWER_REPEATER_RANGE: u32 = 6;
     /// Create a new grid with default empty tiles
     pub fn new(width: u32, height: u32) -> Self {
         let size = (width * height) as usize;
@@ -291,6 +300,7 @@ impl Grid {
                 terrain,
                 building: None,
                 revealed,
+                bridge: false,
             });
         }
 
@@ -323,6 +333,18 @@ impl Grid {
                 return false;
             }
             if tile.building.is_some() {
+                if building_type == BuildingType::Bridge {
+                    if let Some(ref building) = tile.building {
+                        return building.building_type == BuildingType::Conduit && !tile.bridge;
+                    }
+                }
+                return false;
+            }
+            // Conduits cannot overlap any existing building and must be on buildable terrain
+            if building_type == BuildingType::Conduit {
+                return tile.terrain.is_buildable();
+            }
+            if building_type == BuildingType::Bridge {
                 return false;
             }
             // Special case: Wind turbines can go on mountains
@@ -342,6 +364,10 @@ impl Grid {
         }
 
         if let Some(tile) = self.get_mut(pos) {
+            if building_type == BuildingType::Bridge {
+                tile.bridge = true;
+                return true;
+            }
             let mut building = Building::new(building_type, pos);
 
             // Wind turbines on mountains get efficiency bonus
@@ -361,6 +387,7 @@ impl Grid {
     /// Remove a building at position
     pub fn remove_building(&mut self, pos: GridPos) -> Option<Building> {
         if let Some(tile) = self.get_mut(pos) {
+            tile.bridge = false;
             tile.building.take()
         } else {
             None
@@ -417,6 +444,72 @@ impl Grid {
             .map(move |(i, tile)| (GridPos::from_index(i, self.width), tile))
     }
 
+    /// Find a conduit path that avoids blocked tiles
+    pub fn find_conduit_path(&self, from: GridPos, to: GridPos) -> Option<Vec<GridPos>> {
+        if from == to {
+            return Some(Vec::new());
+        }
+
+        let is_passable = |pos: GridPos, grid: &Grid| {
+            if let Some(tile) = grid.get(pos) {
+                if !tile.revealed {
+                    return false;
+                }
+                if !tile.terrain.is_buildable() {
+                    return false;
+                }
+                match tile.building.as_ref() {
+                    None => true,
+                    Some(building) => building.building_type == BuildingType::Conduit,
+                }
+            } else {
+                false
+            }
+        };
+
+        let mut queue: VecDeque<GridPos> = VecDeque::new();
+        let mut came_from: HashMap<GridPos, GridPos> = HashMap::new();
+        queue.push_back(from);
+
+        while let Some(current) = queue.pop_front() {
+            for neighbor in current.neighbors() {
+                if !neighbor.in_bounds(self.width, self.height) {
+                    continue;
+                }
+                if came_from.contains_key(&neighbor) || neighbor == from {
+                    continue;
+                }
+                if !is_passable(neighbor, self) {
+                    continue;
+                }
+                came_from.insert(neighbor, current);
+                if neighbor == to {
+                    queue.clear();
+                    break;
+                }
+                queue.push_back(neighbor);
+            }
+        }
+
+        if !came_from.contains_key(&to) {
+            return None;
+        }
+
+        let mut reversed = Vec::new();
+        let mut current = to;
+        while current != from {
+            reversed.push(current);
+            current = *came_from.get(&current).unwrap();
+        }
+        reversed.reverse();
+        Some(reversed)
+    }
+
+    /// Count total buildings on the grid
+    pub fn total_buildings(&self) -> usize {
+        self.tiles.iter().filter(|tile| tile.building.is_some()).count()
+    }
+
     /// Update power grid connectivity using flood fill from Core
     pub fn update_power_grid(&mut self) {
         // First, reset all buildings to unpowered
@@ -433,13 +526,13 @@ impl Grid {
             None => return,
         };
 
-        // Flood fill from Core through power-transmitting buildings
-        let mut visited = std::collections::HashSet::new();
+        // Flood fill from Core through power-transmitting buildings with repeater range
+        let mut best_distance: std::collections::HashMap<GridPos, u32> = std::collections::HashMap::new();
         let mut queue = std::collections::VecDeque::new();
-        queue.push_back(core_pos);
-        visited.insert(core_pos);
+        queue.push_back((core_pos, 0u32));
+        best_distance.insert(core_pos, 0u32);
 
-        while let Some(pos) = queue.pop_front() {
+        while let Some((pos, distance_since_repeater)) = queue.pop_front() {
             // Mark this building as connected and powered
             if let Some(tile) = self.get_mut(pos) {
                 if let Some(ref mut building) = tile.building {
@@ -448,12 +541,23 @@ impl Grid {
                 }
             }
 
+            let next_distance = if let Some(tile) = self.get(pos) {
+                if let Some(ref building) = tile.building {
+                    if matches!(building.building_type, BuildingType::Core | BuildingType::PowerNode) {
+                        0
+                    } else {
+                        distance_since_repeater + 1
+                    }
+                } else {
+                    distance_since_repeater + 1
+                }
+            } else {
+                distance_since_repeater + 1
+            };
+
             // Check neighbors
             for neighbor in pos.neighbors() {
                 if !neighbor.in_bounds(self.width, self.height) {
-                    continue;
-                }
-                if visited.contains(&neighbor) {
                     continue;
                 }
 
@@ -461,8 +565,16 @@ impl Grid {
                 if let Some(tile) = self.get(neighbor) {
                     if let Some(ref building) = tile.building {
                         if building.transmits_power() {
-                            visited.insert(neighbor);
-                            queue.push_back(neighbor);
+                            if next_distance <= Self::POWER_REPEATER_RANGE {
+                                let should_visit = match best_distance.get(&neighbor) {
+                                    Some(existing) => next_distance < *existing,
+                                    None => true,
+                                };
+                                if should_visit {
+                                    best_distance.insert(neighbor, next_distance);
+                                    queue.push_back((neighbor, next_distance));
+                                }
+                            }
                         }
                     }
                 }

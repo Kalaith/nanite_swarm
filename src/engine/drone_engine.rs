@@ -1,7 +1,8 @@
 //! Resource flow and automation logic
 
 use serde::{Deserialize, Serialize};
-use super::GridPos;
+use super::{GridPos, Grid};
+use std::collections::{VecDeque, HashMap, HashSet};
 
 /// Resource types that can be gathered and transported
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -121,9 +122,9 @@ impl Drone {
         if self.path_index < self.path.len() && self.path_index > 0 {
             let from = self.path[self.path_index - 1];
             let to = self.path[self.path_index];
-            let x = from.x as f32 + (to.x - from.x) as f32 * self.progress;
-            let y = from.y as f32 + (to.y - from.y) as f32 * self.progress;
-            (x, y)
+            let interp_x = from.x as f32 + (to.x - from.x) as f32 * self.progress;
+            let interp_y = from.y as f32 + (to.y - from.y) as f32 * self.progress;
+            (interp_x, interp_y)
         } else {
             (self.position.x as f32, self.position.y as f32)
         }
@@ -183,6 +184,11 @@ impl DroneManager {
             .collect()
     }
 
+    /// Remove all drones assigned to a specific drill
+    pub fn remove_drones_at_drill(&mut self, drill_pos: GridPos) {
+        self.drones.retain(|drone| drone.home_drill != drill_pos);
+    }
+
     /// Get idle drones at a specific drill
     pub fn idle_drones_at_drill(&mut self, drill_pos: GridPos) -> Vec<&mut Drone> {
         self.drones
@@ -214,28 +220,68 @@ impl DroneManager {
 }
 
 /// Simple pathfinding - returns direct path (no obstacle avoidance yet)
-pub fn find_path(from: GridPos, to: GridPos) -> Vec<GridPos> {
-    let mut path = Vec::new();
-    let mut current = from;
-
-    // Simple direct path - move horizontally then vertically
-    while current.x != to.x {
-        if current.x < to.x {
-            current.x += 1;
-        } else {
-            current.x -= 1;
-        }
-        path.push(current);
+pub fn find_path(grid: &Grid, from: GridPos, to: GridPos) -> Vec<GridPos> {
+    if from == to {
+        return Vec::new();
     }
 
-    while current.y != to.y {
-        if current.y < to.y {
-            current.y += 1;
+    let mut queue = VecDeque::new();
+    let mut visited = HashSet::new();
+    let mut came_from: HashMap<GridPos, GridPos> = HashMap::new();
+
+    queue.push_back(from);
+    visited.insert(from);
+
+    let passable = |pos: GridPos, grid: &Grid| {
+        if let Some(tile) = grid.get(pos) {
+            !matches!(tile.terrain, super::TerrainType::Void | super::TerrainType::Water)
         } else {
-            current.y -= 1;
+            false
         }
-        path.push(current);
+    };
+
+    while let Some(current) = queue.pop_front() {
+        for neighbor in current.neighbors() {
+            if !neighbor.in_bounds(grid.width, grid.height) {
+                continue;
+            }
+            if visited.contains(&neighbor) {
+                continue;
+            }
+            if !passable(neighbor, grid) {
+                continue;
+            }
+            visited.insert(neighbor);
+            came_from.insert(neighbor, current);
+            if neighbor == to {
+                queue.clear();
+                break;
+            }
+            queue.push_back(neighbor);
+        }
     }
 
-    path
+    if !came_from.contains_key(&to) {
+        // Fallback to direct path if BFS fails
+        let mut path = Vec::new();
+        let mut current = from;
+        while current.x != to.x {
+            current.x += if current.x < to.x { 1 } else { -1 };
+            path.push(current);
+        }
+        while current.y != to.y {
+            current.y += if current.y < to.y { 1 } else { -1 };
+            path.push(current);
+        }
+        return path;
+    }
+
+    let mut rev_path = Vec::new();
+    let mut current = to;
+    while current != from {
+        rev_path.push(current);
+        current = *came_from.get(&current).unwrap();
+    }
+    rev_path.reverse();
+    rev_path
 }

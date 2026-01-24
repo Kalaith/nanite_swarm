@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1280, height=720, initial-scale=1.0">
-    <title>Game Title | Web Hatchery Games</title>
+    <title>Nanite Swarm | Web Hatchery Games</title>
     <link rel="stylesheet" href="../shared.css">
     <style>
         .game-container canvas {
@@ -17,8 +17,8 @@
 <body>
     <div class="game-page">
         <header class="game-header">
-            <h1>🎮 Game Title</h1>
-            <a href="../" class="back-link">← All Games</a>
+            <h1>Nanite Swarm</h1>
+            <a href="../" class="back-link">Back to All Games</a>
         </header>
 
         <!-- Game Canvas -->
@@ -32,8 +32,8 @@
 
         <!-- Controls Bar -->
         <div class="game-controls">
-            <button class="btn btn-secondary btn-icon" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
-            <button class="btn btn-secondary" onclick="focusGame()">🎮 Focus Game</button>
+            <button class="btn btn-secondary btn-icon" onclick="toggleFullscreen()" title="Fullscreen">Fullscreen</button>
+            <button class="btn btn-secondary" onclick="focusGame()">Focus Game</button>
             <span style="flex: 1;"></span>
             <span style="color: var(--text-muted); font-size: 0.85rem;">Click the game canvas to start</span>
         </div>
@@ -44,15 +44,20 @@
                 <section class="info-section">
                     <h2>About This Game</h2>
                     <p>
-                        A brief description of the game.
+                        Nanite Swarm is a self-replicating AI simulation where you build an automated network
+                        to consume planetary resources and expand across worlds.
                     </p>
                 </section>
 
                 <section class="info-section" style="margin-top: 1rem;">
                     <h2>Controls</h2>
                     <ul class="controls-list">
-                        <li><kbd>WASD</kbd><span>Move</span></li>
-                        <li><kbd>Space</kbd><span>Action</span></li>
+                        <li><kbd>1-5</kbd><span>Select buildings</span></li>
+                        <li><kbd>H</kbd><span>Harvest terrain</span></li>
+                        <li><kbd>R</kbd><span>Research view</span></li>
+                        <li><kbd>M</kbd><span>Interplanetary map</span></li>
+                        <li><kbd>ESC</kbd><span>Main menu</span></li>
+                        <li><kbd>F1</kbd><span>Help overlay</span></li>
                     </ul>
                 </section>
             </div>
@@ -60,13 +65,13 @@
             <aside class="game-sidebar">
                 <div class="sidebar-section">
                     <h3>Status</h3>
-                    <span class="status-badge playable">✓ Playable</span>
+                    <span class="status-badge playable">Playable</span>
                 </div>
 
                 <div class="sidebar-section">
                     <h3>Details</h3>
                     <ul class="meta-list">
-                        <li><span class="label">Genre</span><span class="value">Genre</span></li>
+                        <li><span class="label">Genre</span><span class="value">Automation / Strategy</span></li>
                         <li><span class="label">Engine</span><span class="value">Macroquad</span></li>
                         <li><span class="label">Platform</span><span class="value">Browser, Windows</span></li>
                     </ul>
@@ -83,9 +88,7 @@
     <script src="mq_js_bundle.js"></script>
     <script>
         document.getElementById('loading').style.display = 'none';
-        
-        // TODO: Replace with your actual WASM filename
-        load("game_title.wasm");
+        load("nanite_swarm.wasm");
 
         function toggleFullscreen() {
             const container = document.getElementById('game-container');
