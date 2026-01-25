@@ -171,6 +171,11 @@ impl DroneManager {
         &self.drones
     }
 
+    /// Get mutable access to drones
+    pub fn drones_mut(&mut self) -> &mut [Drone] {
+        &mut self.drones
+    }
+
     /// Get mutable reference to a drone by ID
     pub fn get_drone_mut(&mut self, id: u32) -> Option<&mut Drone> {
         self.drones.iter_mut().find(|d| d.id == id)
@@ -234,7 +239,7 @@ pub fn find_path(grid: &Grid, from: GridPos, to: GridPos) -> Vec<GridPos> {
 
     let passable = |pos: GridPos, grid: &Grid| {
         if let Some(tile) = grid.get(pos) {
-            !matches!(tile.terrain, super::TerrainType::Void | super::TerrainType::Water)
+            !matches!(tile.terrain, super::TerrainType::Void | super::TerrainType::Water) || tile.bridge
         } else {
             false
         }

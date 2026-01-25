@@ -21,6 +21,7 @@ pub fn render_research_view(
     research_state: &ResearchState,
     research_tree: &ResearchTree,
     data_available: f32,
+    research_locked: bool,
 ) -> ResearchAction {
     clear_background(Colors::BACKGROUND);
 
@@ -28,7 +29,15 @@ pub fn render_research_view(
     let screen_h = screen_height();
     let center_x = screen_w / 2.0;
     let center_y = screen_h / 2.0 - 30.0;
-    let pulse = (get_time() as f32 * 2.0).sin().abs();
+    let time = get_time() as f32;
+    let pulse = (time * 2.0).sin().abs();
+
+    // Background neural haze
+    for i in 0..120u32 {
+        let x = (i as f32 * 37.7).sin().abs() * screen_w;
+        let y = (i as f32 * 19.3).cos().abs() * screen_h;
+        draw_circle(x, y, 1.0 + (i % 3) as f32 * 0.4, Color::new(0.0, 0.7, 0.9, 0.06));
+    }
 
     // Header
     draw_panel(0.0, 0.0, screen_w, HEADER_HEIGHT);
@@ -60,6 +69,10 @@ pub fn render_research_view(
     draw_text("Legend", right_panel_x + 12.0, right_panel_y + 28.0, 16.0, Colors::PRIMARY);
 
     let mut left_text_y = left_panel_y + 56.0;
+    if research_locked {
+        draw_text("Research Locked (power collapse)", left_panel_x + 12.0, left_text_y, 12.0, Colors::ERROR);
+        left_text_y += 24.0;
+    }
     if let Some(current) = &research_state.current_research {
         if let Some(node) = research_tree.get_node(current) {
             let progress = research_state.research_progress.min(node.data_cost);
@@ -93,12 +106,13 @@ pub fn render_research_view(
         let line_color = if from_unlocked && to_unlocked {
             Colors::PRIMARY
         } else if from_unlocked {
-            Color::new(0.0, 0.5, 0.7, 0.8)
+            Color::new(0.0, 0.6, 0.8, 0.7)
         } else {
-            Colors::SECONDARY
+            Color::new(0.25, 0.25, 0.3, 0.7)
         };
 
         draw_line(from_x, from_y, to_x, to_y, 2.0, line_color);
+        draw_line(from_x, from_y, to_x, to_y, 1.0, Color::new(0.6, 0.8, 1.0, 0.15));
     }
 
     // Draw nodes
@@ -143,13 +157,32 @@ pub fn render_research_view(
         draw_circle(node_x, node_y, NODE_RADIUS, fill_color);
         draw_circle_lines(node_x, node_y, NODE_RADIUS, 2.0, border_color);
 
+        // Progress ring for current research
+        if is_current && node.data_cost > 0.0 {
+            let pct = (research_state.research_progress / node.data_cost).clamp(0.0, 1.0);
+            let segments = 24;
+            for i in 0..segments {
+                let t0 = (i as f32 / segments as f32) * std::f32::consts::TAU;
+                let t1 = ((i + 1) as f32 / segments as f32) * std::f32::consts::TAU;
+                if (i as f32 / segments as f32) <= pct {
+                    let r = NODE_RADIUS + 6.0;
+                    let x0 = node_x + t0.cos() * r;
+                    let y0 = node_y + t0.sin() * r;
+                    let x1 = node_x + t1.cos() * r;
+                    let y1 = node_y + t1.sin() * r;
+                    draw_line(x0, y0, x1, y1, 2.0, Colors::WARNING);
+                }
+            }
+        }
+
         // Hover effect
         if is_hovered {
             draw_circle_lines(node_x, node_y, NODE_RADIUS + 5.0 + pulse * 2.0, 2.0, Colors::PRIMARY);
+            draw_text(&node.name, node_x - 22.0, node_y - NODE_RADIUS - 12.0, 12.0, Colors::TEXT);
         }
 
         // Draw abbreviated name
-        let abbrev = &node.name[..node.name.len().min(6)];
+        let abbrev = &node.name[..node.name.len().min(7)];
         let text_size = measure_text(abbrev, None, 12, 1.0);
         let text_color = if is_unlocked { Colors::BACKGROUND } else { Colors::TEXT };
         draw_text(abbrev, node_x - text_size.width / 2.0, node_y + 4.0, 12.0, text_color);

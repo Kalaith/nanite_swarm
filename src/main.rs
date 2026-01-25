@@ -9,9 +9,12 @@ mod engine;
 mod state;
 mod ui;
 mod screens;
+mod assets;
+mod directives;
 
 use engine::{ResearchTree, ResearchState};
 use state::{PlanetState, save_to_file, load_from_file};
+use assets::GameTextures;
 use screens::{
     render_main_menu, MenuAction,
     render_planetary_view, PlanetaryAction,
@@ -19,6 +22,7 @@ use screens::{
     render_interplanetary_view, InterplanetaryAction,
     render_settings_menu, SettingsAction, Settings,
 };
+use directives::{Directive, pick_directive};
 
 /// Game phases/screens
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -40,13 +44,18 @@ pub struct Game {
     has_save: bool,
     current_planet_index: usize,
     colonized_planets: [bool; 5],
+    textures: GameTextures,
+    directive: Directive,
+    directive_timer: f32,
+    directive_tier: i32,
 }
 
 const SAVE_PATH: &str = "save.json";
 const RESEARCH_RATE: f32 = 5.0; // data per second
 
 impl Game {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let directive = pick_directive(0);
         Self {
             phase: GamePhase::MainMenu,
             planet_state: PlanetState::default(),
@@ -56,6 +65,10 @@ impl Game {
             has_save: false,
             current_planet_index: 2, // Mars is starting planet
             colonized_planets: [false, false, true, false, false], // Mars colonized
+            textures: GameTextures::load().await,
+            directive,
+            directive_timer: 0.0,
+            directive_tier: 0,
         }
     }
 
@@ -71,6 +84,7 @@ impl Game {
                     MenuAction::NewGame => {
                         self.planet_state = PlanetState::new("Mars", 24, 24, rand::gen_range(0u64, u64::MAX));
                         self.research_state = ResearchState::default();
+                        self.sync_building_unlocks();
                         self.phase = GamePhase::Playing;
                     }
                     MenuAction::Continue => {
@@ -81,6 +95,7 @@ impl Game {
                             self.planet_state = state;
                             self.phase = GamePhase::Playing;
                             self.has_save = true;
+                            self.sync_building_unlocks();
                         }
                     }
                     MenuAction::Save => {
@@ -106,8 +121,9 @@ impl Game {
                 let delta = get_frame_time();
                 self.planet_state.update(delta);
                 self.update_research(delta);
+                self.update_directives(delta);
 
-                match render_planetary_view(&mut self.planet_state, self.settings.show_fps) {
+                match render_planetary_view(&mut self.planet_state, self.settings.show_fps, &self.textures, &self.directive) {
                     PlanetaryAction::OpenResearch => {
                         self.phase = GamePhase::Research;
                     }
@@ -128,6 +144,7 @@ impl Game {
                     &self.research_state,
                     &self.research_tree,
                     self.planet_state.resources.data,
+                    self.planet_state.research_lock_timer > 0.0,
                 ) {
                     ResearchAction::Close => {
                         self.phase = GamePhase::Playing;
@@ -180,8 +197,13 @@ impl Game {
 
     fn update_research(&mut self, delta_time: f32) {
         let Some(current_id) = self.research_state.current_research.clone() else {
+            self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+            self.sync_building_unlocks();
             return;
         };
+        if self.planet_state.research_lock_timer > 0.0 {
+            return;
+        }
         let Some(node) = self.research_tree.get_node(&current_id) else {
             self.research_state.current_research = None;
             self.research_state.research_progress = 0.0;
@@ -206,6 +228,39 @@ impl Game {
         if self.research_state.research_progress >= node.data_cost {
             self.research_state.complete_research();
         }
+
+        self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+        self.sync_building_unlocks();
+    }
+
+    fn sync_building_unlocks(&mut self) {
+        if self.research_state.is_unlocked("power_grid") {
+            self.planet_state.unlock_building(engine::BuildingType::Conduit);
+            self.planet_state.unlock_building(engine::BuildingType::PowerNode);
+            self.planet_state.unlock_building(engine::BuildingType::Bridge);
+        }
+        if self.research_state.is_unlocked("data_processing") {
+            self.planet_state.unlock_building(engine::BuildingType::ServerBank);
+        }
+        if self.research_state.is_unlocked("wind_power") {
+            self.planet_state.unlock_building(engine::BuildingType::WindTurbine);
+        }
+        if self.research_state.is_unlocked("self_cleaning_servos") {
+            self.planet_state.unlock_building(engine::BuildingType::Sweeper);
+        }
+    }
+
+    fn update_directives(&mut self, delta_time: f32) {
+        self.directive_timer += delta_time;
+        if self.directive_timer >= 600.0 || self.directive.duration <= 0.0 || self.directive.completed {
+            if self.directive.completed {
+                self.planet_state.resources.data += self.directive.reward_data;
+            }
+            self.directive_timer = 0.0;
+            self.directive_tier += 1;
+            self.directive = pick_directive(self.directive_tier);
+        }
+        self.directive.update(&self.planet_state, delta_time);
     }
 }
 
@@ -221,7 +276,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut game = Game::new();
+    let mut game = Game::new().await;
 
     loop {
         game.update();

@@ -4,6 +4,8 @@ use macroquad::prelude::*;
 use crate::state::PlanetState;
 use crate::engine::{GridPos, TerrainType, BuildingType, DroneState};
 use crate::ui::{Colors, draw_panel, draw_button_sized};
+use crate::assets::GameTextures;
+use crate::directives::Directive;
 
 const TILE_SIZE: f32 = 28.0;
 const HUD_HEIGHT: f32 = 72.0;
@@ -91,6 +93,20 @@ fn format_power_delta(delta: f32) -> String {
     }
 }
 
+fn dust_status(dust: f32) -> (&'static str, Color) {
+    if dust >= 100.0 {
+        ("Stalled", Colors::ERROR)
+    } else if dust >= 75.0 {
+        ("Power leakage", Colors::WARNING)
+    } else if dust >= 50.0 {
+        ("Drones slowed", Colors::WARNING)
+    } else if dust >= 25.0 {
+        ("Efficiency -10%", Colors::TEXT_DIM)
+    } else {
+        ("Clean", Colors::SUCCESS)
+    }
+}
+
 fn draw_build_card(
     state: &mut PlanetState,
     x: f32,
@@ -104,16 +120,19 @@ fn draw_build_card(
     let selected = state.selected_building == Some(building_type);
     let (mineral_cost, energy_cost) = building_type.cost();
     let can_afford = state.resources.can_afford(mineral_cost, energy_cost);
+    let unlocked = state.is_building_unlocked(building_type);
 
-    let base_color = if selected {
+    let base_color = if !unlocked {
+        Colors::SURFACE_DARK
+    } else if selected {
         Colors::PRIMARY_SOFT
     } else if hovered {
         Colors::SURFACE
     } else {
         Colors::SURFACE_DARK
     };
-    let border_color = if can_afford { Colors::PANEL_BORDER } else { Colors::SECONDARY };
-    let text_color = if can_afford { Colors::TEXT } else { Colors::TEXT_DIM };
+    let border_color = if unlocked && can_afford { Colors::PANEL_BORDER } else { Colors::SECONDARY };
+    let text_color = if unlocked && can_afford { Colors::TEXT } else { Colors::TEXT_DIM };
 
     draw_rectangle(x + 2.0, y + 3.0, width, height, Color::new(0.0, 0.0, 0.0, 0.3));
     draw_rectangle(x, y, width, height, base_color);
@@ -139,7 +158,7 @@ fn draw_build_card(
         x + 48.0,
         y + 40.0,
         11.0,
-        Colors::TEXT_DIM,
+        if unlocked { Colors::TEXT_DIM } else { Colors::SECONDARY },
     );
     draw_text(
         &format!("Power {}", format_power_delta(building_type.power_delta())),
@@ -148,8 +167,11 @@ fn draw_build_card(
         11.0,
         Colors::PRIMARY_SOFT,
     );
+    if !unlocked {
+        draw_text("Locked", x + width - 72.0, y + 22.0, 11.0, Colors::WARNING);
+    }
 
-    if hovered && is_mouse_button_pressed(MouseButton::Left) {
+    if unlocked && hovered && is_mouse_button_pressed(MouseButton::Left) {
         state.select_building(building_type);
     }
 
@@ -195,32 +217,78 @@ fn terrain_color_at(pos: GridPos, terrain: TerrainType, revealed: bool) -> Color
     }
 }
 
-/// Get color for building type (dimmed if unpowered)
-fn building_color(building_type: BuildingType, powered: bool) -> Color {
-    let base = match building_type {
-        BuildingType::Core => Colors::PRIMARY,
-        BuildingType::Drill => Colors::ACCENT,
-        BuildingType::Conduit => Colors::SECONDARY,
-        BuildingType::Bridge => Colors::PRIMARY_SOFT,
-        BuildingType::PowerNode => Colors::WARNING,
-        BuildingType::WindTurbine => Color::new(0.5, 0.8, 0.5, 1.0),
-        BuildingType::ServerBank => Color::new(0.3, 0.5, 0.8, 1.0),
-    };
-
-    if powered {
-        base
-    } else {
-        Color::new(base.r * 0.4, base.g * 0.4, base.b * 0.4, 1.0)
+fn terrain_texture<'a>(terrain: TerrainType, textures: &'a GameTextures) -> &'a Texture2D {
+    match terrain {
+        TerrainType::Empty => &textures.terrain.ground,
+        TerrainType::Mountain => &textures.terrain.mountain,
+        TerrainType::Forest => &textures.terrain.forest,
+        TerrainType::Water => &textures.terrain.water,
+        TerrainType::Rough => &textures.terrain.rough,
+        TerrainType::Void => &textures.terrain.void,
     }
 }
 
-fn apply_brightness(color: Color, factor: f32) -> Color {
-    Color::new(
-        (color.r * factor).min(1.0),
-        (color.g * factor).min(1.0),
-        (color.b * factor).min(1.0),
-        color.a,
-    )
+fn building_texture<'a>(building_type: BuildingType, textures: &'a GameTextures) -> &'a Texture2D {
+    match building_type {
+        BuildingType::Core => &textures.buildings.core_stage_1a,
+        BuildingType::Drill => &textures.buildings.drill,
+        BuildingType::Conduit => &textures.buildings.conduit_straight_h,
+        BuildingType::Bridge => &textures.buildings.bridge,
+        BuildingType::PowerNode => &textures.buildings.power_node,
+        BuildingType::WindTurbine => &textures.buildings.wind_turbine,
+        BuildingType::ServerBank => &textures.buildings.server_bank,
+        BuildingType::Sweeper => &textures.buildings.sweeper,
+    }
+}
+
+fn conduit_texture<'a>(connections: &[bool; 4], textures: &'a GameTextures) -> &'a Texture2D {
+    let n = connections[0];
+    let e = connections[1];
+    let s = connections[2];
+    let w = connections[3];
+
+    let count = connections.iter().filter(|c| **c).count();
+    match count {
+        4 => &textures.buildings.conduit_cross,
+        3 => {
+            if !n {
+                &textures.buildings.conduit_tee_n
+            } else if !e {
+                &textures.buildings.conduit_tee_e
+            } else if !s {
+                &textures.buildings.conduit_tee_s
+            } else {
+                &textures.buildings.conduit_tee_w
+            }
+        }
+        2 => {
+            if (n && s) && !e && !w {
+                &textures.buildings.conduit_straight_v
+            } else if (e && w) && !n && !s {
+                &textures.buildings.conduit_straight_h
+            } else if n && e {
+                &textures.buildings.conduit_corner_ne
+            } else if n && w {
+                &textures.buildings.conduit_corner_nw
+            } else if s && e {
+                &textures.buildings.conduit_corner_se
+            } else if s && w {
+                &textures.buildings.conduit_corner_sw
+            } else if n || s {
+                &textures.buildings.conduit_straight_v
+            } else {
+                &textures.buildings.conduit_straight_h
+            }
+        }
+        1 => {
+            if n || s {
+                &textures.buildings.conduit_straight_v
+            } else {
+                &textures.buildings.conduit_straight_h
+            }
+        }
+        _ => &textures.buildings.conduit_straight_h,
+    }
 }
 
 fn conduit_connections(state: &PlanetState, pos: GridPos) -> [bool; 4] {
@@ -244,6 +312,7 @@ fn conduit_connections(state: &PlanetState, pos: GridPos) -> [bool; 4] {
                         | BuildingType::PowerNode
                         | BuildingType::WindTurbine
                         | BuildingType::ServerBank
+                        | BuildingType::Sweeper
                 );
             }
         }
@@ -251,68 +320,70 @@ fn conduit_connections(state: &PlanetState, pos: GridPos) -> [bool; 4] {
     connections
 }
 
-fn draw_conduit_tile(px: f32, py: f32, pos: GridPos, state: &PlanetState, brightness: f32) {
+fn draw_conduit_tile(
+    px: f32,
+    py: f32,
+    pos: GridPos,
+    state: &PlanetState,
+    brightness: f32,
+    textures: &GameTextures,
+) {
     let connections = conduit_connections(state, pos);
-    let center_x = px + TILE_SIZE * 0.5;
-    let center_y = py + TILE_SIZE * 0.5;
-    let color = apply_brightness(Colors::PRIMARY_SOFT, brightness);
-    let thickness = 4.0 * state.placement_scale(pos);
-
-    draw_circle(center_x, center_y, thickness * 0.5, color);
-
-    if connections[0] {
-        draw_line(center_x, center_y, center_x, py + 2.0, thickness, color);
-    }
-    if connections[1] {
-        draw_line(center_x, center_y, px + TILE_SIZE - 2.0, center_y, thickness, color);
-    }
-    if connections[2] {
-        draw_line(center_x, center_y, center_x, py + TILE_SIZE - 2.0, thickness, color);
-    }
-    if connections[3] {
-        draw_line(center_x, center_y, px + 2.0, center_y, thickness, color);
-    }
+    let tint = Color::new(brightness, brightness, brightness, 1.0);
+    let texture = conduit_texture(&connections, textures);
+    draw_texture_ex(
+        texture,
+        px,
+        py,
+        tint,
+        DrawTextureParams {
+            dest_size: Some(vec2(TILE_SIZE - 1.0, TILE_SIZE - 1.0)),
+            ..Default::default()
+        },
+    );
 }
 
 /// Determine current Core evolution stage based on progress
 fn core_stage(state: &PlanetState) -> u8 {
-    let growth = state.time_played as f32 + (state.resources.minerals + state.resources.data) * 0.5;
+    let growth = state.time_played as f32 + (state.resources.minerals + state.resources.data) * 0.4;
 
-    if growth < 120.0 {
+    if growth < 60.0 {
         0
-    } else if growth < 300.0 {
+    } else if growth < 120.0 {
         1
-    } else if growth < 600.0 {
+    } else if growth < 200.0 {
         2
-    } else {
+    } else if growth < 320.0 {
         3
+    } else {
+        4
     }
 }
 
 /// Draw evolved Core visuals
-fn draw_core_visual(px: f32, py: f32, size: f32, state: &PlanetState) {
+fn draw_core_visual(px: f32, py: f32, size: f32, state: &PlanetState, textures: &GameTextures) {
     let stage = core_stage(state);
     let center_x = px + size * 0.5;
     let center_y = py + size * 0.5;
     let pulse = ((state.time_played as f32) * 2.0).sin().abs();
 
-    let base_margin = 2.0;
-    let base_color = Colors::PRIMARY;
-    draw_rectangle(
-        px + base_margin,
-        py + base_margin,
-        size - base_margin * 2.0 - 1.0,
-        size - base_margin * 2.0 - 1.0,
-        base_color,
-    );
+    let texture = match stage {
+        0 => &textures.buildings.core_stage_1a,
+        1 => &textures.buildings.core_stage_1b,
+        2 => &textures.buildings.core_stage_1c,
+        3 => &textures.buildings.core_stage_2a,
+        _ => &textures.buildings.core_stage_2b,
+    };
 
-    let core_radius = 3.5 + stage as f32 * 1.4;
-    let core_alpha = 0.55 + pulse * 0.25;
-    draw_circle(
-        center_x,
-        center_y,
-        core_radius,
-        Color::new(base_color.r, base_color.g, base_color.b, core_alpha),
+    draw_texture_ex(
+        texture,
+        px,
+        py,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(vec2(size - 1.0, size - 1.0)),
+            ..Default::default()
+        },
     );
 
     if stage >= 1 {
@@ -329,15 +400,18 @@ fn draw_core_visual(px: f32, py: f32, size: f32, state: &PlanetState) {
             center_y,
             11.0,
             1.0,
-            Color::new(base_color.r, base_color.g, base_color.b, glow_alpha),
+            Color::new(Colors::PRIMARY.r, Colors::PRIMARY.g, Colors::PRIMARY.b, glow_alpha),
         );
     }
-
-    draw_text("C", center_x - 4.0, center_y + 5.0, 14.0, Colors::BACKGROUND);
 }
 
 /// Render the planetary grid view
-pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> PlanetaryAction {
+pub fn render_planetary_view(
+    state: &mut PlanetState,
+    show_fps: bool,
+    textures: &GameTextures,
+    directive: &Directive,
+) -> PlanetaryAction {
     clear_background(Colors::BACKGROUND);
 
     let screen_w = screen_width();
@@ -372,8 +446,22 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
             let (px, py) = grid_to_screen(pos);
 
             // Draw terrain
-            let color = terrain_color_at(pos, tile.terrain, tile.revealed);
-            draw_rectangle(px, py, TILE_SIZE - 1.0, TILE_SIZE - 1.0, color);
+            if tile.revealed {
+                let texture = terrain_texture(tile.terrain, textures);
+                draw_texture_ex(
+                    texture,
+                    px,
+                    py,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(TILE_SIZE - 1.0, TILE_SIZE - 1.0)),
+                        ..Default::default()
+                    },
+                );
+            } else {
+                let color = terrain_color_at(pos, tile.terrain, tile.revealed);
+                draw_rectangle(px, py, TILE_SIZE - 1.0, TILE_SIZE - 1.0, color);
+            }
 
             // Draw harvestable indicator
             if tile.revealed && tile.terrain.is_harvestable() && tile.building.is_none() {
@@ -385,14 +473,23 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
                 draw_rectangle_lines(px + 2.0, py + 2.0, TILE_SIZE - 5.0, TILE_SIZE - 5.0, 1.0, indicator_color);
             }
 
+            if tile.filter {
+                let filter_color = Color::new(0.2, 0.8, 0.6, 0.7);
+                draw_circle_lines(px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.5, 6.0, 1.0, filter_color);
+            }
+            if tile.forest_cleared {
+                let scar_color = Color::new(0.8, 0.4, 0.2, 0.6);
+                draw_circle_lines(px + TILE_SIZE * 0.5, py + TILE_SIZE * 0.5, 8.0, 1.0, scar_color);
+            }
+
             // Draw building if present
             if let Some(ref building) = tile.building {
                 if building.building_type == BuildingType::Core {
-                    draw_core_visual(px, py, TILE_SIZE, state);
+                    draw_core_visual(px, py, TILE_SIZE, state, textures);
                 } else {
                     let brightness = if building.powered { global_pulse } else { 0.6 };
-                    let bcolor = apply_brightness(building_color(building.building_type, building.powered), brightness);
-                    let margin = 3.0;
+                    let tint = Color::new(brightness, brightness, brightness, 1.0);
+                    let margin = 2.0;
                     let scale = state.placement_scale(pos);
                     let size = (TILE_SIZE - margin * 2.0 - 1.0) * scale;
                     let offset = (TILE_SIZE - margin * 2.0 - 1.0 - size) * 0.5;
@@ -403,29 +500,19 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
                     let center_y = py + TILE_SIZE * 0.5;
 
                     if building.building_type == BuildingType::Conduit {
-                        draw_conduit_tile(px, py, pos, state, brightness);
+                        draw_conduit_tile(px, py, pos, state, brightness, textures);
                     } else {
-                        draw_rectangle(
+                        let texture = building_texture(building.building_type, textures);
+                        draw_texture_ex(
+                            texture,
                             box_x,
                             box_y,
-                            size,
-                            size,
-                            bcolor,
+                            tint,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(size, size)),
+                                ..Default::default()
+                            },
                         );
-                    }
-
-                    let letter = match building.building_type {
-                        BuildingType::Core => "C",
-                        BuildingType::Drill => "D",
-                        BuildingType::Conduit => "=",
-                        BuildingType::Bridge => "#",
-                        BuildingType::PowerNode => "P",
-                        BuildingType::WindTurbine => "W",
-                        BuildingType::ServerBank => "S",
-                    };
-                    let text_color = if building.powered { Colors::BACKGROUND } else { Colors::TEXT_DIM };
-                    if building.building_type != BuildingType::Conduit {
-                        draw_text(letter, px + 8.0, py + 18.0, 16.0, text_color);
                     }
 
                     if building.building_type == BuildingType::PowerNode && building.powered {
@@ -442,9 +529,16 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
             }
 
             if tile.bridge {
-                let cross_color = Color::new(0.8, 0.8, 0.9, 0.8);
-                draw_line(px + 4.0, py + 4.0, px + TILE_SIZE - 6.0, py + TILE_SIZE - 6.0, 1.0, cross_color);
-                draw_line(px + TILE_SIZE - 6.0, py + 4.0, px + 4.0, py + TILE_SIZE - 6.0, 1.0, cross_color);
+                draw_texture_ex(
+                    &textures.buildings.bridge,
+                    px,
+                    py,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(TILE_SIZE - 1.0, TILE_SIZE - 1.0)),
+                        ..Default::default()
+                    },
+                );
             }
 
             // Draw hover highlight
@@ -483,8 +577,8 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
 
         let frac_x = vx - vx.floor();
         let frac_y = vy - vy.floor();
-        let drone_x = dx + frac_x * TILE_SIZE + TILE_SIZE / 2.0 - 4.0;
-        let drone_y = dy + frac_y * TILE_SIZE + TILE_SIZE / 2.0 - 4.0;
+        let mut drone_x = dx + frac_x * TILE_SIZE + TILE_SIZE / 2.0 - 4.0;
+        let mut drone_y = dy + frac_y * TILE_SIZE + TILE_SIZE / 2.0 - 4.0;
 
         let drone_color = match drone.state {
             DroneState::Idle => Colors::SECONDARY,
@@ -494,9 +588,25 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
             DroneState::Error => Colors::ERROR,
         };
 
-        draw_circle(drone_x, drone_y, 4.0, drone_color);
+        let wobble = (time * 6.0 + drone.id as f32).sin() * 1.2;
+        let float = (time * 5.0 + drone.id as f32 * 0.7).cos() * 1.0;
 
-        if drone.path_index > 0 && drone.path_index < drone.path.len() {
+        if drone.state == DroneState::Idle {
+            // Idle cluster wobble near drill
+            drone_x += wobble * 0.6;
+            drone_y += float * 0.6;
+            draw_circle(drone_x, drone_y, 3.2, drone_color);
+        } else if drone.state == DroneState::Error {
+            // Error spin + glyph
+            let spin = (time * 8.0 + drone.id as f32).sin();
+            draw_circle(drone_x, drone_y, 4.0, drone_color);
+            draw_line(drone_x - 4.0, drone_y - 4.0, drone_x + 4.0, drone_y + 4.0, 1.0 + spin.abs(), Colors::ERROR);
+            draw_line(drone_x + 4.0, drone_y - 4.0, drone_x - 4.0, drone_y + 4.0, 1.0 + spin.abs(), Colors::ERROR);
+        } else {
+            draw_circle(drone_x + wobble * 0.2, drone_y + float * 0.2, 4.0, drone_color);
+        }
+
+        if drone.state != DroneState::Error && drone.path_index > 0 && drone.path_index < drone.path.len() {
             let prev = drone.path[drone.path_index - 1];
             let next = drone.path[drone.path_index];
             let dir_x = (next.x - prev.x) as f32;
@@ -515,8 +625,14 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
             }
         }
 
-        if drone.carrying > 0.0 {
+        if drone.carrying > 0.0 && drone.state != DroneState::Error {
             draw_circle(drone_x, drone_y - 6.0, 2.0, Colors::ACCENT);
+        }
+
+        if state.power_collapse_shutdown > 0.0 {
+            // Power collapse: drones sag/fall
+            let fall = (1.0 - (state.power_collapse_shutdown / 20.0)).clamp(0.0, 1.0);
+            draw_circle(drone_x, drone_y + fall * 6.0, 2.0, Colors::ERROR);
         }
     }
 
@@ -530,7 +646,7 @@ pub fn render_planetary_view(state: &mut PlanetState, show_fps: bool) -> Planeta
     }
 
     // Draw UI panels
-    let ui_action = draw_ui_panels(state, screen_w, screen_h, hovered_pos, show_fps);
+    let ui_action = draw_ui_panels(state, screen_w, screen_h, hovered_pos, show_fps, directive);
 
     // Handle input
     if ui_action != PlanetaryAction::None {
@@ -547,6 +663,7 @@ fn draw_ui_panels(
     screen_h: f32,
     hovered_pos: Option<GridPos>,
     show_fps: bool,
+    directive: &Directive,
 ) -> PlanetaryAction {
     let mut ui_action = PlanetaryAction::None;
 
@@ -554,6 +671,43 @@ fn draw_ui_panels(
     draw_panel(0.0, 0.0, screen_w, HUD_HEIGHT);
     draw_text("NANITE SWARM", 18.0, 30.0, 18.0, Colors::PRIMARY);
     draw_text(&state.name, 18.0, 52.0, 14.0, Colors::TEXT_DIM);
+    // Directive
+    draw_text(
+        &format!("Directive: {} [{}/{}]", directive.description, directive.progress, directive.target),
+        260.0,
+        30.0,
+        12.0,
+        if directive.completed { Colors::SUCCESS } else { Colors::TEXT_DIM },
+    );
+    draw_text(
+        &format!("Timer: {:.0}s", directive.duration.max(0.0)),
+        260.0,
+        46.0,
+        11.0,
+        Colors::TEXT_DIM,
+    );
+
+    if !state.tutorial_done && !state.tutorial_hidden {
+        let panel_w = 420.0;
+        let panel_h = 96.0;
+        let map_left = SIDEBAR_WIDTH + 12.0;
+        let map_right = screen_w - RIGHTBAR_WIDTH - 12.0;
+        let panel_x = map_left + (map_right - map_left - panel_w) * 0.5;
+        let panel_y = screen_h - BOTTOM_BAR_HEIGHT - panel_h - 12.0;
+        draw_panel(panel_x, panel_y, panel_w, panel_h);
+        draw_text("Tutorial", panel_x + 12.0, panel_y + 26.0, 16.0, Colors::PRIMARY);
+
+        let (title, body) = match state.tutorial_step {
+            0 => ("Step 1: Place a Drill", "Place a Drill next to the Core so it is powered."),
+            1 => ("Step 2: Unlock Power Grid", "Open Research (R) and unlock Power Grid."),
+            2 => ("Step 3: Connect to Core", "Select Conduit (2) and drag to the Core."),
+            3 => ("Step 4: Start Research", "Place a Server Bank to generate Data."),
+            _ => ("All set", "You are ready to expand."),
+        };
+        draw_text(title, panel_x + 12.0, panel_y + 50.0, 13.0, Colors::TEXT);
+        draw_text(body, panel_x + 12.0, panel_y + 70.0, 12.0, Colors::TEXT_DIM);
+        draw_text("Press T to hide", panel_x + 12.0, panel_y + 94.0, 11.0, Colors::TEXT_DIM);
+    }
 
     // Resource chips
     let chip_width = 120.0;
@@ -620,6 +774,21 @@ fn draw_ui_panels(
         draw_text(&banner_text, banner_x + 16.0, banner_y + 24.0, 14.0, Colors::SUCCESS);
     }
 
+    if state.collapse_notice_timer > 0.0 {
+        let banner_w = 520.0;
+        let banner_h = 36.0;
+        let banner_x = (screen_w - banner_w) * 0.5;
+        let banner_y = HUD_HEIGHT + 46.0;
+        draw_panel(banner_x, banner_y, banner_w, banner_h);
+        draw_text(
+            "POWER COLLAPSE: drones offline, data corrupted, research locked",
+            banner_x + 16.0,
+            banner_y + 24.0,
+            13.0,
+            Colors::ERROR,
+        );
+    }
+
     // Left sidebar: Build palette
     let sidebar_x = 12.0;
     let sidebar_y = HUD_HEIGHT + 12.0;
@@ -636,10 +805,14 @@ fn draw_ui_panels(
         BuildingType::PowerNode,
         BuildingType::WindTurbine,
         BuildingType::ServerBank,
+        BuildingType::Sweeper,
     ];
 
     let mut card_y = sidebar_y + 58.0;
     for building in buildings {
+        if !state.is_building_unlocked(building) {
+            continue;
+        }
         let card_height = draw_build_card(state, sidebar_x + 10.0, card_y, sidebar_w - 20.0, building);
         card_y += card_height + 10.0;
     }
@@ -703,6 +876,7 @@ fn draw_ui_panels(
             let terrain_name = tile.terrain.name();
             let building_type = tile.building.as_ref().map(|building| building.building_type);
             let building_powered = tile.building.as_ref().map(|building| building.powered).unwrap_or(false);
+            let building_dust = tile.building.as_ref().map(|building| building.dust).unwrap_or(0.0);
             let is_harvestable = tile.terrain.is_harvestable();
             let harvest_rewards = tile.terrain.harvest_rewards();
             let preservation_bonus = tile.terrain.preservation_bonus();
@@ -710,11 +884,32 @@ fn draw_ui_panels(
             draw_text(&format!("Tile: {}", terrain_name), right_x + 12.0, intel_text_y + 8.0, 11.0, Colors::TEXT_DIM);
             intel_text_y += 26.0;
 
+            if tile.filter {
+                draw_text("Forest filter active (dust reduction)", right_x + 12.0, intel_text_y, 10.0, Colors::SUCCESS);
+                intel_text_y += 16.0;
+            }
+            if tile.forest_cleared {
+                draw_text("Forest cleared: pollution rises in this sector", right_x + 12.0, intel_text_y, 10.0, Colors::WARNING);
+                intel_text_y += 16.0;
+            }
+            if tile.mountain_harvested {
+                draw_text("Mountain scarred: turbine bonus lost forever", right_x + 12.0, intel_text_y, 10.0, Colors::WARNING);
+                intel_text_y += 16.0;
+            }
+
             if let Some(building_type) = building_type {
                 let status_text = if building_powered { "Powered" } else { "No Power" };
                 let status_color = if building_powered { Colors::SUCCESS } else { Colors::ERROR };
                 draw_text(building_type.name(), right_x + 12.0, intel_text_y, 12.0, Colors::TEXT);
                 draw_text(status_text, right_x + 12.0, intel_text_y + 16.0, 11.0, status_color);
+                let (dust_label, dust_color) = dust_status(building_dust);
+                draw_text(
+                    &format!("Dust {:.0}% ({})", building_dust, dust_label),
+                    right_x + 12.0,
+                    intel_text_y + 32.0,
+                    11.0,
+                    dust_color,
+                );
 
                 if building_type != BuildingType::Core {
                     if draw_button_sized(right_x + right_w - 96.0, intel_text_y - 2.0, 72.0, 26.0, "Sell") {
@@ -725,7 +920,7 @@ fn draw_ui_panels(
                     draw_text(
                         &format!("Refund +{}M +{}E", (mineral_cost * refund_ratio) as i32, (energy_cost * refund_ratio) as i32),
                         right_x + 12.0,
-                        intel_text_y + 34.0,
+                        intel_text_y + 50.0,
                         10.0,
                         Colors::TEXT_DIM,
                     );
@@ -768,7 +963,7 @@ fn draw_ui_panels(
     // Bottom command bar
     draw_panel(0.0, screen_h - BOTTOM_BAR_HEIGHT, screen_w, BOTTOM_BAR_HEIGHT);
     draw_text(
-        "Left click to place | Drag to paint | Right click clears | H to harvest | F1 help",
+        "Left click to place | Drag to paint | Right click clears | H to harvest | F filter | F1 help",
         16.0,
         screen_h - 38.0,
         12.0,
@@ -789,7 +984,7 @@ fn draw_ui_panels(
     // Help overlay
     if state.show_help {
         let help_w = 360.0;
-        let help_h = 170.0;
+        let help_h = 200.0;
         let help_x = screen_w - help_w - 20.0;
         let help_y = 90.0;
         draw_panel(help_x, help_y, help_w, help_h);
@@ -798,8 +993,9 @@ fn draw_ui_panels(
         draw_text("Right Click: Cancel selection / Harvest", help_x + 16.0, help_y + 75.0, 14.0, Colors::TEXT);
         draw_text("H: Harvest terrain", help_x + 16.0, help_y + 95.0, 14.0, Colors::TEXT);
         draw_text("R: Research  |  M: Map", help_x + 16.0, help_y + 115.0, 14.0, Colors::TEXT);
-        draw_text("1-6: Select buildings", help_x + 16.0, help_y + 135.0, 14.0, Colors::TEXT);
-        draw_text("F1: Toggle help", help_x + 16.0, help_y + 155.0, 14.0, Colors::TEXT_DIM);
+        draw_text("1-7: Select buildings", help_x + 16.0, help_y + 135.0, 14.0, Colors::TEXT);
+        draw_text("F: Convert forest to filter", help_x + 16.0, help_y + 155.0, 14.0, Colors::TEXT);
+        draw_text("F1: Toggle help", help_x + 16.0, help_y + 175.0, 14.0, Colors::TEXT_DIM);
     }
 
     ui_action
@@ -826,15 +1022,28 @@ fn handle_input(state: &mut PlanetState, hovered_pos: Option<GridPos>) -> Planet
     if is_key_pressed(KeyCode::Key5) {
         state.select_building(BuildingType::ServerBank);
     }
+    if is_key_pressed(KeyCode::Key7) {
+        state.select_building(BuildingType::Sweeper);
+    }
 
     if is_key_pressed(KeyCode::F1) {
         state.show_help = !state.show_help;
+    }
+    if is_key_pressed(KeyCode::T) {
+        state.tutorial_hidden = !state.tutorial_hidden;
     }
 
     // Harvest terrain with H key
     if is_key_pressed(KeyCode::H) {
         if let Some(pos) = hovered_pos {
             state.try_harvest_terrain(pos);
+        }
+    }
+
+    // Convert forest to dust filter
+    if is_key_pressed(KeyCode::F) {
+        if let Some(pos) = hovered_pos {
+            state.try_convert_forest_to_filter(pos);
         }
     }
 

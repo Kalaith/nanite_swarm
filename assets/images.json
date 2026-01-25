@@ -1,0 +1,254 @@
+[
+  {
+    "id": "terrain_ground",
+    "prompt": "Top-down pixel art tile of buildable ground, muted brown-gray sci-fi soil with subtle tech debris",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "terrain_mountain",
+    "prompt": "Top-down pixel art tile of a rocky mountain outcrop with metallic ore seams, harsh highlights",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "terrain_forest",
+    "prompt": "Top-down pixel art tile of dense alien forest, dark teal foliage with small glowing spores",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "terrain_water",
+    "prompt": "Top-down pixel art tile of shallow water with faint ripples and cyan reflections",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "terrain_rough",
+    "prompt": "Top-down pixel art tile of rough, scarred ground after harvesting, broken rock and dust",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "terrain_void",
+    "prompt": "Top-down pixel art tile of volcanic void gap, dark basalt edges with glowing lava cracks",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_core",
+    "prompt": "Top-down pixel art of the AI Core hub, compact hexagonal reactor with blue glow",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_drill",
+    "prompt": "Top-down pixel art of an automated mining drill with spinning head; industrial yellow accents",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_conduit",
+    "prompt": "Top-down pixel art of a straight power conduit segment with cyan energy line",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_bridge",
+    "prompt": "Top-down pixel art overlay of a conduit bridge that allows crossing, metallic X-brace",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_power_node",
+    "prompt": "Top-down pixel art of a power repeater node, small tower with pulsing blue core",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_wind_turbine",
+    "prompt": "Top-down pixel art of a compact wind turbine with three blades and a small base",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "building_server_bank",
+    "prompt": "Top-down pixel art of a server bank, dark racks with teal status lights",
+    "width": 32,
+    "height": 32
+  },
+  {
+    "id": "drone_worker",
+    "prompt": "Pixel art worker drone, small hovering bot with cyan lights, top-down view",
+    "width": 16,
+    "height": 16
+  },
+  {
+    "id": "icon_energy",
+    "prompt": "Pixel art icon for Energy, glowing yellow bolt in a rounded square",
+    "width": 16,
+    "height": 16
+  },
+  {
+    "id": "icon_minerals",
+    "prompt": "Pixel art icon for Minerals, orange crystal shard in a rounded square",
+    "width": 16,
+    "height": 16
+  },
+  {
+    "id": "icon_data",
+    "prompt": "Pixel art icon for Data, teal circuit node in a rounded square",
+    "width": 16,
+    "height": 16
+  },
+  {
+    "id": "icon_biomass",
+    "prompt": "Pixel art icon for Biomass, green leaf microbe cluster in a rounded square",
+    "width": 16,
+    "height": 16
+  },
+  {
+    "id": "research_core",
+    "prompt": "Pixel art research icon for AI Core, glowing neural sphere",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_basic_mining",
+    "prompt": "Pixel art research icon for Basic Mining, drill bit over ore",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_power_grid",
+    "prompt": "Pixel art research icon for Power Grid, connected nodes with energy arcs",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_data_processing",
+    "prompt": "Pixel art research icon for Data Processing, stacked servers with data stream",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_efficient_drills",
+    "prompt": "Pixel art research icon for Efficient Drills, twin drill heads",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_drone_capacity",
+    "prompt": "Pixel art research icon for Drone Capacity, drone carrying a crate",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_wind_power",
+    "prompt": "Pixel art research icon for Wind Power, turbine with wind streaks",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_power_efficiency",
+    "prompt": "Pixel art research icon for Power Efficiency, battery with upward arrow",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_advanced_research",
+    "prompt": "Pixel art research icon for Advanced Research, glowing brain network",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_mass_driver",
+    "prompt": "Pixel art research icon for Mass Driver, rail cannon firing a payload",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "research_neural_expansion",
+    "prompt": "Pixel art research icon for Neural Expansion, expanding neural lattice",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "achievement_first_drill",
+    "prompt": "Pixel art achievement badge for First Drill, drill silhouette and spark",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "achievement_power_surplus",
+    "prompt": "Pixel art achievement badge for Power Surplus, battery overflowing",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "achievement_data_miner",
+    "prompt": "Pixel art achievement badge for Data Miner, data cube with pick",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "achievement_builder",
+    "prompt": "Pixel art achievement badge for Builder, stacked blocks with wrench",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "core_stage_1",
+    "prompt": "Top-down pixel art of the AI Core Stage 1, crash-lander pod with lights",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "id": "core_stage_2",
+    "prompt": "Top-down pixel art of the AI Core Stage 2, sprawling fortress factory hub",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "id": "core_stage_3",
+    "prompt": "Top-down pixel art of the AI Core Stage 3, space elevator base with tether",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "id": "core_stage_4",
+    "prompt": "Top-down pixel art of the AI Core Stage 4, planetary ring segment and megastructure",
+    "width": 128,
+    "height": 128
+  },
+  {
+    "id": "planet_mercury",
+    "prompt": "Pixel art planet icon for Mercury, scorched gray surface with craters",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "planet_venus",
+    "prompt": "Pixel art planet icon for Venus, yellow cloud bands and haze",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "planet_mars",
+    "prompt": "Pixel art planet icon for Mars, red surface with polar ice cap",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "planet_jupiter",
+    "prompt": "Pixel art planet icon for Jupiter, orange bands and large storm spot",
+    "width": 64,
+    "height": 64
+  },
+  {
+    "id": "planet_saturn",
+    "prompt": "Pixel art planet icon for Saturn, pale bands with thin ring",
+    "width": 64,
+    "height": 64
+  }
+]

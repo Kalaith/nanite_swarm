@@ -6,6 +6,15 @@ use macroquad::rand::gen_range;
 use crate::engine::{Grid, GridPos, BuildingType, DroneManager, find_path, DroneState, TerrainType};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const DUST_RATE: f32 = 0.12; // dust per second
+const SWEEPER_RATE: f32 = 0.6; // dust cleared per second
+const SWEEPER_RADIUS: i32 = 3;
+const FILTER_RADIUS: i32 = 3;
+const FILTER_RATE_MULTIPLIER: f32 = 0.6;
+const POLLUTION_RADIUS: i32 = 3;
+const POLLUTION_RATE_MULTIPLIER: f32 = 1.3;
+const CORE_DATA_RATE: f32 = 0.25; // passive data trickle to unlock first techs
+
 fn unix_seconds_now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -98,6 +107,27 @@ pub struct PlanetState {
     pub battery_seconds: f32,
     pub last_saved_unix: i64,
     pub achievements: Vec<Achievement>,
+    pub unlocked_buildings: Vec<BuildingType>,
+    #[serde(skip, default)]
+    pub self_cleaning_unlocked: bool,
+    #[serde(skip, default)]
+    pub power_negative_seconds: f32,
+    #[serde(skip, default)]
+    pub power_collapse_cooldown: f32,
+    #[serde(skip, default)]
+    pub power_collapse_shutdown: f32,
+    #[serde(skip, default)]
+    pub research_lock_timer: f32,
+    #[serde(skip, default)]
+    pub collapse_notice_timer: f32,
+    #[serde(skip, default)]
+    pub forest_harvested_count: i32,
+    #[serde(skip, default)]
+    pub tutorial_step: u8,
+    #[serde(skip, default)]
+    pub tutorial_hidden: bool,
+    #[serde(skip, default)]
+    pub tutorial_done: bool,
     #[serde(skip, default)]
     pub last_offline_seconds: f32,
     #[serde(skip, default)]
@@ -175,6 +205,17 @@ impl PlanetState {
                     achieved: false,
                 },
             ],
+            self_cleaning_unlocked: false,
+            power_negative_seconds: 0.0,
+            power_collapse_cooldown: 0.0,
+            power_collapse_shutdown: 0.0,
+            research_lock_timer: 0.0,
+            collapse_notice_timer: 0.0,
+            forest_harvested_count: 0,
+            tutorial_step: 0,
+            tutorial_hidden: false,
+            tutorial_done: false,
+            unlocked_buildings: vec![BuildingType::Drill],
             last_offline_seconds: 0.0,
             last_offline_simulated: 0.0,
             offline_notice_timer: 0.0,
@@ -192,6 +233,9 @@ impl PlanetState {
     /// Try to place a building at position
     pub fn try_place_building(&mut self, pos: GridPos) -> bool {
         if let Some(building_type) = self.selected_building {
+            if !self.is_building_unlocked(building_type) {
+                return false;
+            }
             let (mineral_cost, energy_cost) = building_type.cost();
 
             if !self.resources.can_afford(mineral_cost, energy_cost) {
@@ -233,6 +277,9 @@ impl PlanetState {
     }
 
     pub fn try_place_conduit_path(&mut self, from: GridPos, to: GridPos) -> bool {
+        if !self.is_building_unlocked(BuildingType::Conduit) {
+            return false;
+        }
         let Some(path) = self.grid.find_conduit_path(from, to) else {
             return false;
         };
@@ -311,6 +358,16 @@ impl PlanetState {
             // Apply harvest
             if let Some(tile) = self.grid.get_mut(pos) {
                 tile.terrain = terrain.harvested();
+                match terrain {
+                    TerrainType::Mountain => {
+                        tile.mountain_harvested = true;
+                    }
+                    TerrainType::Forest => {
+                        tile.forest_cleared = true;
+                        self.forest_harvested_count += 1;
+                    }
+                    _ => {}
+                }
             }
 
             self.resources.minerals += minerals;
@@ -345,32 +402,53 @@ impl PlanetState {
 
         self.time_played += sim_delta as f64;
 
-        // Update drones
-        let events = self.drones.update(sim_delta);
-        let mut delivered_total = 0.0;
-        for event in events {
-            match event {
-                crate::engine::DroneEvent::ReachedCore { amount, .. } => {
-                    delivered_total += amount;
-                }
-                crate::engine::DroneEvent::ReachedDrill { drone_id } => {
-                    if let Some(drone) = self.drones.get_drone_mut(drone_id) {
-                        drone.state = DroneState::Idle;
-                    }
-                }
-                _ => {}
-            }
+        self.update_dust(sim_delta);
+        self.update_drone_speeds();
+        self.update_tutorial();
+
+        if self.power_collapse_cooldown > 0.0 {
+            self.power_collapse_cooldown = (self.power_collapse_cooldown - delta_time).max(0.0);
         }
-        if delivered_total > 0.0 {
-            self.resources.minerals += delivered_total;
-            if allow_visuals {
-                self.spawn_resource_burst();
+        if self.power_collapse_shutdown > 0.0 {
+            self.power_collapse_shutdown = (self.power_collapse_shutdown - delta_time).max(0.0);
+        }
+        if self.research_lock_timer > 0.0 {
+            self.research_lock_timer = (self.research_lock_timer - delta_time).max(0.0);
+        }
+        if self.collapse_notice_timer > 0.0 {
+            self.collapse_notice_timer = (self.collapse_notice_timer - delta_time).max(0.0);
+        }
+
+        // Update drones
+        if self.power_collapse_shutdown <= 0.0 {
+            let events = self.drones.update(sim_delta);
+            let mut delivered_total = 0.0;
+            for event in events {
+                match event {
+                    crate::engine::DroneEvent::ReachedCore { amount, .. } => {
+                        delivered_total += amount;
+                    }
+                    crate::engine::DroneEvent::ReachedDrill { drone_id } => {
+                        if let Some(drone) = self.drones.get_drone_mut(drone_id) {
+                            drone.state = DroneState::Idle;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if delivered_total > 0.0 {
+                self.resources.minerals += delivered_total;
+                if allow_visuals {
+                    self.spawn_resource_burst();
+                }
             }
         }
 
         // Process drills and server banks
-        self.update_drills(sim_delta);
-        self.update_servers(sim_delta);
+        if self.power_collapse_shutdown <= 0.0 {
+            self.update_drills(sim_delta);
+            self.update_servers(sim_delta);
+        }
 
         // Particles for drone motion
         if allow_visuals {
@@ -379,9 +457,30 @@ impl PlanetState {
         }
 
         // Power-based energy generation
+        self.grid.update_power_grid();
         let net_power = self.grid.net_power();
         self.power_balance = net_power;
         self.resources.energy += net_power * sim_delta;
+
+        // Passive data trickle from Core to avoid research deadlock
+        if let Some(core_pos) = self.grid.find_core() {
+            if let Some(core_tile) = self.grid.get(core_pos) {
+                if let Some(core) = core_tile.building.as_ref() {
+                    if core.powered && !core.is_dust_stalled() {
+                        self.resources.data += CORE_DATA_RATE * sim_delta * core.dust_efficiency();
+                    }
+                }
+            }
+        }
+
+        if net_power < 0.0 {
+            self.power_negative_seconds += delta_time;
+            if self.power_negative_seconds >= 60.0 && self.power_collapse_cooldown <= 0.0 {
+                self.trigger_power_collapse();
+            }
+        } else {
+            self.power_negative_seconds = 0.0;
+        }
 
         // Battery drain for offline mechanics
         self.battery_seconds = (self.battery_seconds - delta_time).max(0.0);
@@ -412,10 +511,13 @@ impl PlanetState {
         if let Some(core) = core_pos {
             for drill_pos in drill_positions {
                 // Check if drill is powered
-                let is_powered = self.grid.get(drill_pos)
-                    .and_then(|t| t.building.as_ref())
-                    .map(|b| b.powered)
-                    .unwrap_or(false);
+                let Some(building) = self.grid.get(drill_pos)
+                    .and_then(|t| t.building.as_ref()) else { continue; };
+                let is_powered = building.powered;
+                if building.is_dust_stalled() {
+                    continue;
+                }
+                let efficiency = building.dust_efficiency();
 
                 if !is_powered {
                     continue;
@@ -436,7 +538,7 @@ impl PlanetState {
                     if let Some(drone_id) = idle_drone {
                         let path = find_path(&self.grid, drill_pos, core);
                         if let Some(drone) = self.drones.get_drone_mut(drone_id) {
-                            drone.dispatch_to_core(core, path, 10.0);
+                            drone.dispatch_to_core(core, path, 10.0 * efficiency);
                         }
                     }
                 }
@@ -450,10 +552,13 @@ impl PlanetState {
 
         for server_pos in server_positions {
             // Check if server is powered
-            let is_powered = self.grid.get(server_pos)
-                .and_then(|t| t.building.as_ref())
-                .map(|b| b.powered)
-                .unwrap_or(false);
+            let Some(building) = self.grid.get(server_pos)
+                .and_then(|t| t.building.as_ref()) else { continue; };
+            let is_powered = building.powered;
+            if building.is_dust_stalled() {
+                continue;
+            }
+            let efficiency = building.dust_efficiency();
 
             if !is_powered {
                 continue;
@@ -466,19 +571,163 @@ impl PlanetState {
             // Generate 1 data per second when powered
             if *timer >= 1.0 {
                 *timer = 0.0;
-                self.resources.data += 1.0;
+                self.resources.data += 1.0 * efficiency;
             }
         }
     }
 
+    fn update_dust(&mut self, delta_time: f32) {
+        let sweeper_positions = self.grid.find_buildings(BuildingType::Sweeper);
+        let powered_sweepers: Vec<GridPos> = sweeper_positions
+            .into_iter()
+            .filter(|pos| {
+                self.grid.get(*pos)
+                    .and_then(|t| t.building.as_ref())
+                    .map(|b| b.powered && !b.is_dust_stalled())
+                    .unwrap_or(false)
+            })
+            .collect();
+        let filter_positions: Vec<GridPos> = self.grid
+            .iter_tiles()
+            .filter_map(|(pos, tile)| if tile.filter { Some(pos) } else { None })
+            .collect();
+        let cleared_forest_positions: Vec<GridPos> = self.grid
+            .iter_tiles()
+            .filter_map(|(pos, tile)| if tile.forest_cleared { Some(pos) } else { None })
+            .collect();
+
+        for (pos, tile) in self.grid.iter_tiles_mut() {
+            let Some(building) = tile.building.as_mut() else { continue; };
+            let mut rate = DUST_RATE;
+
+            if self.self_cleaning_unlocked {
+                rate *= 0.6;
+            }
+
+            if filter_positions.iter().any(|filter_pos| pos.distance(*filter_pos) as i32 <= FILTER_RADIUS) {
+                rate *= FILTER_RATE_MULTIPLIER;
+            }
+            if cleared_forest_positions
+                .iter()
+                .any(|cleared_pos| pos.distance(*cleared_pos) as i32 <= POLLUTION_RADIUS)
+            {
+                rate *= POLLUTION_RATE_MULTIPLIER;
+            }
+
+            // Apply sweeper cleaning if nearby powered sweeper exists
+            let mut clean_rate = 0.0;
+            if powered_sweepers.iter().any(|sweeper_pos| pos.distance(*sweeper_pos) as i32 <= SWEEPER_RADIUS) {
+                clean_rate = SWEEPER_RATE;
+            }
+
+            building.dust = (building.dust + rate * delta_time - clean_rate * delta_time)
+                .clamp(0.0, 100.0);
+        }
+    }
+
+    fn update_drone_speeds(&mut self) {
+        let base_speed = self.drones.drone_speed;
+        for drone in self.drones.drones_mut() {
+            let mut speed = base_speed;
+            if let Some(tile) = self.grid.get(drone.home_drill) {
+                if let Some(ref building) = tile.building {
+                    speed *= building.dust_drone_speed_multiplier();
+                }
+            }
+            drone.speed = speed;
+        }
+    }
+
+    fn update_tutorial(&mut self) {
+        if self.tutorial_done {
+            return;
+        }
+
+        let has_drill = !self.grid.find_buildings(BuildingType::Drill).is_empty();
+        let drill_connected = self.grid.iter_tiles()
+            .any(|(_, tile)| {
+                tile.building
+                    .as_ref()
+                    .map(|b| b.building_type == BuildingType::Drill && b.connected_to_core)
+                    .unwrap_or(false)
+            });
+        let conduits_unlocked = self.is_building_unlocked(BuildingType::Conduit);
+        let has_server_bank = !self.grid.find_buildings(BuildingType::ServerBank).is_empty();
+
+        match self.tutorial_step {
+            0 if has_drill => self.tutorial_step = 1,
+            1 if conduits_unlocked => self.tutorial_step = 2,
+            2 if drill_connected => self.tutorial_step = 3,
+            3 if has_server_bank => {
+                self.tutorial_step = 4;
+                self.tutorial_done = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn trigger_power_collapse(&mut self) {
+        self.power_negative_seconds = 0.0;
+        self.power_collapse_cooldown = 120.0;
+        self.power_collapse_shutdown = 20.0;
+        self.research_lock_timer = 30.0;
+        self.collapse_notice_timer = 10.0;
+
+        // Drones drop cargo and shut down
+        for drone in self.drones.drones_mut() {
+            drone.carrying = 0.0;
+            drone.state = DroneState::Error;
+            drone.path.clear();
+            drone.path_index = 0;
+            drone.progress = 0.0;
+            drone.target = drone.position;
+        }
+
+        // Corrupt data and research progress
+        self.resources.data *= 0.7;
+        self.research.research_progress *= 0.75;
+    }
+
+    pub fn try_convert_forest_to_filter(&mut self, pos: GridPos) -> bool {
+        if let Some(tile) = self.grid.get(pos) {
+            if !tile.revealed || tile.terrain != TerrainType::Forest || tile.building.is_some() {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        if let Some(tile) = self.grid.get_mut(pos) {
+            tile.terrain = TerrainType::Rough;
+            tile.filter = true;
+            tile.forest_cleared = true;
+            self.forest_harvested_count += 1;
+            return true;
+        }
+
+        false
+    }
+
     /// Select a building type for placement
     pub fn select_building(&mut self, building_type: BuildingType) {
-        self.selected_building = Some(building_type);
+        if self.is_building_unlocked(building_type) {
+            self.selected_building = Some(building_type);
+        }
     }
 
     /// Clear building selection
     pub fn clear_selection(&mut self) {
         self.selected_building = None;
+    }
+
+    pub fn is_building_unlocked(&self, building_type: BuildingType) -> bool {
+        matches!(building_type, BuildingType::Core) || self.unlocked_buildings.contains(&building_type)
+    }
+
+    pub fn unlock_building(&mut self, building_type: BuildingType) {
+        if !self.unlocked_buildings.contains(&building_type) {
+            self.unlocked_buildings.push(building_type);
+        }
     }
 
     pub fn battery_time_left(&self) -> (i32, i32) {

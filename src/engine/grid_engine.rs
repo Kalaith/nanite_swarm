@@ -127,6 +127,7 @@ pub enum BuildingType {
     PowerNode,  // Extends power grid
     WindTurbine, // Generates power (bonus on mountains)
     ServerBank, // Generates data, consumes power
+    Sweeper,    // Cleans dust buildup in nearby buildings
 }
 
 impl BuildingType {
@@ -141,6 +142,7 @@ impl BuildingType {
             BuildingType::PowerNode => (15.0, 5.0),
             BuildingType::WindTurbine => (25.0, 15.0),
             BuildingType::ServerBank => (40.0, 30.0),
+            BuildingType::Sweeper => (12.0, 6.0),
         }
     }
 
@@ -154,6 +156,7 @@ impl BuildingType {
             BuildingType::PowerNode => "Power Node",
             BuildingType::WindTurbine => "Wind Turbine",
             BuildingType::ServerBank => "Server Bank",
+            BuildingType::Sweeper => "Sweeper",
         }
     }
 
@@ -166,6 +169,7 @@ impl BuildingType {
             BuildingType::PowerNode => Some('3'),
             BuildingType::WindTurbine => Some('4'),
             BuildingType::ServerBank => Some('5'),
+            BuildingType::Sweeper => Some('7'),
             BuildingType::Core => None,
         }
     }
@@ -180,6 +184,7 @@ impl BuildingType {
             BuildingType::PowerNode => "Repeater that extends power range.",
             BuildingType::WindTurbine => "Generates power. Bonus on mountains.",
             BuildingType::ServerBank => "Consumes power to generate research data.",
+            BuildingType::Sweeper => "Clears dust from nearby buildings.",
         }
     }
 
@@ -190,6 +195,7 @@ impl BuildingType {
             BuildingType::WindTurbine => 5.0,
             BuildingType::Drill => -2.0,
             BuildingType::ServerBank => -5.0,
+            BuildingType::Sweeper => -1.0,
             _ => 0.0,
         }
     }
@@ -204,6 +210,8 @@ pub struct Building {
     pub powered: bool,
     pub efficiency: f32,  // 0.0 to 1.0+
     pub connected_to_core: bool,  // For logistics validation
+    #[serde(default)]
+    pub dust: f32, // 0.0 to 100.0
 }
 
 impl Building {
@@ -215,6 +223,7 @@ impl Building {
             powered: is_core,
             efficiency: 1.0,
             connected_to_core: is_core,
+            dust: 0.0,
         }
     }
 
@@ -241,6 +250,56 @@ impl Building {
             BuildingType::Drill | BuildingType::ServerBank
         )
     }
+
+    pub fn dust_efficiency(&self) -> f32 {
+        if self.dust >= 100.0 {
+            0.0
+        } else if self.dust >= 25.0 {
+            0.9
+        } else {
+            1.0
+        }
+    }
+
+    pub fn dust_drone_speed_multiplier(&self) -> f32 {
+        if self.dust >= 50.0 {
+            0.7
+        } else {
+            1.0
+        }
+    }
+
+    pub fn dust_power_generation_multiplier(&self) -> f32 {
+        if self.dust >= 100.0 {
+            0.0
+        } else if self.dust >= 75.0 {
+            0.7
+        } else {
+            1.0
+        }
+    }
+
+    pub fn dust_power_consumption_multiplier(&self) -> f32 {
+        if self.dust >= 100.0 {
+            0.0
+        } else if self.dust >= 75.0 {
+            1.2
+        } else {
+            1.0
+        }
+    }
+
+    pub fn dust_power_leak(&self) -> f32 {
+        if self.dust >= 75.0 && self.transmits_power() {
+            0.5
+        } else {
+            0.0
+        }
+    }
+
+    pub fn is_dust_stalled(&self) -> bool {
+        self.dust >= 100.0
+    }
 }
 
 /// A single tile on the grid
@@ -251,6 +310,12 @@ pub struct Tile {
     pub revealed: bool,  // For fog of war / expansion
     #[serde(default)]
     pub bridge: bool,
+    #[serde(default)]
+    pub filter: bool, // Forest filter tile for dust reduction
+    #[serde(default)]
+    pub mountain_harvested: bool, // Permanent scar for turbine bonuses
+    #[serde(default)]
+    pub forest_cleared: bool, // Permanent pollution penalty
 }
 
 impl Default for Tile {
@@ -260,6 +325,9 @@ impl Default for Tile {
             building: None,
             revealed: false,
             bridge: false,
+            filter: false,
+            mountain_harvested: false,
+            forest_cleared: false,
         }
     }
 }
@@ -326,6 +394,9 @@ impl Grid {
                 building: None,
                 revealed,
                 bridge: false,
+                filter: false,
+                mountain_harvested: false,
+                forest_cleared: false,
             });
         }
 
@@ -357,6 +428,9 @@ impl Grid {
             if !tile.revealed {
                 return false;
             }
+            if tile.filter {
+                return false;
+            }
             if tile.building.is_some() {
                 if building_type == BuildingType::Bridge {
                     if let Some(ref building) = tile.building {
@@ -367,10 +441,10 @@ impl Grid {
             }
             // Conduits cannot overlap any existing building and must be on buildable terrain
             if building_type == BuildingType::Conduit {
-                return tile.terrain.is_buildable();
+                return tile.terrain.is_buildable() || tile.bridge;
             }
             if building_type == BuildingType::Bridge {
-                return false;
+                return matches!(tile.terrain, TerrainType::Water | TerrainType::Void) && !tile.bridge;
             }
             // Special case: Wind turbines can go on mountains
             if building_type == BuildingType::WindTurbine {
@@ -469,6 +543,16 @@ impl Grid {
             .map(move |(i, tile)| (GridPos::from_index(i, self.width), tile))
     }
 
+    /// Iterator over all tiles with mutable access
+    pub fn iter_tiles_mut(&mut self) -> impl Iterator<Item = (GridPos, &mut Tile)> {
+        let width = self.width;
+        self.tiles
+            .iter_mut()
+            .enumerate()
+            .map(move |(i, tile)| (GridPos::from_index(i, width), tile))
+    }
+
+
     /// Find a conduit path that avoids blocked tiles
     pub fn find_conduit_path(&self, from: GridPos, to: GridPos) -> Option<Vec<GridPos>> {
         if from == to {
@@ -480,7 +564,10 @@ impl Grid {
                 if !tile.revealed {
                     return false;
                 }
-                if !tile.terrain.is_buildable() {
+                if tile.filter {
+                    return false;
+                }
+                if !tile.terrain.is_buildable() && !tile.bridge {
                     return false;
                 }
                 match tile.building.as_ref() {
@@ -540,8 +627,10 @@ impl Grid {
         // First, reset all buildings to unpowered
         for tile in &mut self.tiles {
             if let Some(ref mut building) = tile.building {
-                building.powered = building.building_type == BuildingType::Core;
-                building.connected_to_core = building.building_type == BuildingType::Core;
+                let is_core = building.building_type == BuildingType::Core;
+                let stalled = building.is_dust_stalled();
+                building.powered = is_core && !stalled;
+                building.connected_to_core = is_core && !stalled;
             }
         }
 
@@ -561,14 +650,18 @@ impl Grid {
             // Mark this building as connected and powered
             if let Some(tile) = self.get_mut(pos) {
                 if let Some(ref mut building) = tile.building {
-                    building.connected_to_core = true;
-                    building.powered = true;
+                    if !building.is_dust_stalled() {
+                        building.connected_to_core = true;
+                        building.powered = true;
+                    }
                 }
             }
 
             let next_distance = if let Some(tile) = self.get(pos) {
                 if let Some(ref building) = tile.building {
-                    if matches!(building.building_type, BuildingType::Core | BuildingType::PowerNode) {
+                    if building.is_dust_stalled() {
+                        distance_since_repeater + 1
+                    } else if matches!(building.building_type, BuildingType::Core | BuildingType::PowerNode) {
                         0
                     } else {
                         distance_since_repeater + 1
@@ -589,7 +682,7 @@ impl Grid {
                 // Check if neighbor has a power-transmitting building
                 if let Some(tile) = self.get(neighbor) {
                     if let Some(ref building) = tile.building {
-                        if building.transmits_power() {
+                        if building.transmits_power() && !building.is_dust_stalled() {
                             if next_distance <= Self::POWER_REPEATER_RANGE {
                                 let should_visit = match best_distance.get(&neighbor) {
                                     Some(existing) => next_distance < *existing,
@@ -612,7 +705,7 @@ impl Grid {
             .enumerate()
             .filter_map(|(i, tile)| {
                 tile.building.as_ref()
-                    .filter(|b| b.powered && b.transmits_power())
+                    .filter(|b| b.powered && b.transmits_power() && !b.is_dust_stalled())
                     .map(|_| GridPos::from_index(i, self.width))
             })
             .collect();
@@ -621,7 +714,7 @@ impl Grid {
             for neighbor in powered_pos.neighbors() {
                 if let Some(tile) = self.get_mut(neighbor) {
                     if let Some(ref mut building) = tile.building {
-                        if !building.transmits_power() {
+                        if !building.transmits_power() && !building.is_dust_stalled() {
                             building.powered = true;
                             building.connected_to_core = true;
                         }
@@ -652,8 +745,8 @@ impl Grid {
             .filter_map(|tile| tile.building.as_ref())
             .filter(|b| b.powered && b.generates_power())
             .map(|b| match b.building_type {
-                BuildingType::Core => 10.0,
-                BuildingType::WindTurbine => 5.0 * b.efficiency,
+                BuildingType::Core => 10.0 * b.dust_power_generation_multiplier(),
+                BuildingType::WindTurbine => 5.0 * b.efficiency * b.dust_power_generation_multiplier(),
                 _ => 0.0,
             })
             .sum()
@@ -664,11 +757,16 @@ impl Grid {
         self.tiles
             .iter()
             .filter_map(|tile| tile.building.as_ref())
-            .filter(|b| b.powered && b.consumes_power())
-            .map(|b| match b.building_type {
-                BuildingType::Drill => 2.0,
-                BuildingType::ServerBank => 5.0,
-                _ => 0.0,
+            .filter(|b| b.powered)
+            .map(|b| {
+                let base = match b.building_type {
+                    BuildingType::Drill => 2.0,
+                    BuildingType::ServerBank => 5.0,
+                    BuildingType::Sweeper => 1.0,
+                    _ => 0.0,
+                };
+                let leak = b.dust_power_leak();
+                (base * b.dust_power_consumption_multiplier()) + leak
             })
             .sum()
     }

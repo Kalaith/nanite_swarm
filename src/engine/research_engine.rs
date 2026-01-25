@@ -57,7 +57,7 @@ impl Default for ResearchTree {
                 ResearchNode::new(
                     "power_grid",
                     "Power Grid",
-                    "Enables conduits and power nodes",
+                    "Enables conduits, power nodes, and bridges",
                     10.0,
                     vec!["core"],
                     (1.5, -1.0),
@@ -65,7 +65,7 @@ impl Default for ResearchTree {
                 ResearchNode::new(
                     "data_processing",
                     "Data Processing",
-                    "Enables server banks",
+                    "Enables server banks for Data generation",
                     15.0,
                     vec!["core"],
                     (0.0, -1.5),
@@ -102,6 +102,14 @@ impl Default for ResearchTree {
                     35.0,
                     vec!["power_grid"],
                     (1.0, -2.0),
+                ),
+                ResearchNode::new(
+                    "self_cleaning_servos",
+                    "Self-Cleaning Servos",
+                    "-40% dust accumulation and unlocks Sweepers",
+                    30.0,
+                    vec!["data_processing"],
+                    (2.5, -2.0),
                 ),
                 ResearchNode::new(
                     "advanced_research",
