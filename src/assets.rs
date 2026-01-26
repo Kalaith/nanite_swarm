@@ -28,9 +28,14 @@ pub struct BuildingTextures {
     pub conduit_cross: Texture2D,
 }
 
+pub struct BuildingIconTextures {
+    pub by_id: HashMap<String, Texture2D>,
+}
+
 pub struct GameTextures {
     pub terrain: TerrainTextures,
     pub buildings: BuildingTextures,
+    pub building_icons: BuildingIconTextures,
 }
 
 impl GameTextures {
@@ -46,6 +51,12 @@ impl GameTextures {
         for def in &data::game_data().buildings {
             let texture = load_texture(&def.texture).await.expect("building_texture");
             building_textures.insert(def.id.clone(), texture);
+        }
+
+        let mut building_icon_textures = HashMap::new();
+        for def in &data::game_data().buildings {
+            let texture = load_texture(&def.icon).await.expect("building_icon");
+            building_icon_textures.insert(def.id.clone(), texture);
         }
 
         let buildings = BuildingTextures {
@@ -68,10 +79,13 @@ impl GameTextures {
             conduit_cross: load_texture("assets/tiles/buildings/building_conduit_cross.png").await.expect("conduit_cross"),
         };
 
+        let building_icons = BuildingIconTextures { by_id: building_icon_textures };
+
         set_filter_nearest(&terrain);
         set_filter_nearest_buildings(&buildings);
+        set_filter_nearest_icons(&building_icons);
 
-        Self { terrain, buildings }
+        Self { terrain, buildings, building_icons }
     }
 }
 
@@ -101,4 +115,10 @@ fn set_filter_nearest_buildings(buildings: &BuildingTextures) {
     buildings.conduit_tee_s.set_filter(FilterMode::Nearest);
     buildings.conduit_tee_w.set_filter(FilterMode::Nearest);
     buildings.conduit_cross.set_filter(FilterMode::Nearest);
+}
+
+fn set_filter_nearest_icons(icons: &BuildingIconTextures) {
+    for texture in icons.by_id.values() {
+        texture.set_filter(FilterMode::Nearest);
+    }
 }

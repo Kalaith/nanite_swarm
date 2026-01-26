@@ -1,7 +1,11 @@
 //! Tile generation for Nanite Swarm (2D)
 
 use image::{Rgba, RgbaImage};
+use image::imageops::FilterType;
 use super::utils::*;
+
+const ICON_WIDTH: u32 = 48;
+const ICON_HEIGHT: u32 = 48;
 
 pub fn generate_tiles() {
     save_tile("terrain_ground", create_ground());
@@ -10,30 +14,30 @@ pub fn generate_tiles() {
     save_tile("terrain_water", create_water());
     save_tile("terrain_rough", create_rough());
     save_tile("terrain_void", create_void());
-    save_building("building_core_stage_1a", create_core_stage_1a());
-    save_building("building_core_stage_1b", create_core_stage_1b());
-    save_building("building_core_stage_1c", create_core_stage_1c());
-    save_building("building_core_stage_2a", create_core_stage_2a());
-    save_building("building_core_stage_2b", create_core_stage_2b());
-    save_building("building_drill", create_drill());
-    save_building("building_conduit_straight_h", create_conduit_variant(ConduitVariant::StraightH));
-    save_building("building_conduit_straight_v", create_conduit_variant(ConduitVariant::StraightV));
-    save_building("building_conduit_corner_ne", create_conduit_variant(ConduitVariant::CornerNE));
-    save_building("building_conduit_corner_nw", create_conduit_variant(ConduitVariant::CornerNW));
-    save_building("building_conduit_corner_se", create_conduit_variant(ConduitVariant::CornerSE));
-    save_building("building_conduit_corner_sw", create_conduit_variant(ConduitVariant::CornerSW));
-    save_building("building_conduit_tee_n", create_conduit_variant(ConduitVariant::TeeN));
-    save_building("building_conduit_tee_e", create_conduit_variant(ConduitVariant::TeeE));
-    save_building("building_conduit_tee_s", create_conduit_variant(ConduitVariant::TeeS));
-    save_building("building_conduit_tee_w", create_conduit_variant(ConduitVariant::TeeW));
-    save_building("building_conduit_cross", create_conduit_variant(ConduitVariant::Cross));
-    save_building("building_bridge", create_bridge());
-    save_building("building_power_node", create_power_node());
-    save_building("building_wind_turbine", create_wind_turbine());
-    save_building("building_server_bank", create_server_bank());
-    save_building("building_sweeper", create_sweeper());
-    save_building("building_storage", create_storage());
-    save_building("building_biomass_harvester", create_biomass_harvester());
+    save_building_with_icon("building_core_stage_1a", create_core_stage_1a());
+    save_building_with_icon("building_core_stage_1b", create_core_stage_1b());
+    save_building_with_icon("building_core_stage_1c", create_core_stage_1c());
+    save_building_with_icon("building_core_stage_2a", create_core_stage_2a());
+    save_building_with_icon("building_core_stage_2b", create_core_stage_2b());
+    save_building_with_icon("building_drill", create_drill());
+    save_building_with_icon("building_conduit_straight_h", create_conduit_variant(ConduitVariant::StraightH));
+    save_building_with_icon("building_conduit_straight_v", create_conduit_variant(ConduitVariant::StraightV));
+    save_building_with_icon("building_conduit_corner_ne", create_conduit_variant(ConduitVariant::CornerNE));
+    save_building_with_icon("building_conduit_corner_nw", create_conduit_variant(ConduitVariant::CornerNW));
+    save_building_with_icon("building_conduit_corner_se", create_conduit_variant(ConduitVariant::CornerSE));
+    save_building_with_icon("building_conduit_corner_sw", create_conduit_variant(ConduitVariant::CornerSW));
+    save_building_with_icon("building_conduit_tee_n", create_conduit_variant(ConduitVariant::TeeN));
+    save_building_with_icon("building_conduit_tee_e", create_conduit_variant(ConduitVariant::TeeE));
+    save_building_with_icon("building_conduit_tee_s", create_conduit_variant(ConduitVariant::TeeS));
+    save_building_with_icon("building_conduit_tee_w", create_conduit_variant(ConduitVariant::TeeW));
+    save_building_with_icon("building_conduit_cross", create_conduit_variant(ConduitVariant::Cross));
+    save_building_with_icon("building_bridge", create_bridge());
+    save_building_with_icon("building_power_node", create_power_node());
+    save_building_with_icon("building_wind_turbine", create_wind_turbine());
+    save_building_with_icon("building_server_bank", create_server_bank());
+    save_building_with_icon("building_sweeper", create_sweeper());
+    save_building_with_icon("building_storage", create_storage());
+    save_building_with_icon("building_biomass_harvester", create_biomass_harvester());
 }
 
 fn create_ground() -> RgbaImage {
@@ -165,6 +169,22 @@ fn save_building(name: &str, img: RgbaImage) {
     let path = format!("assets/tiles/buildings/{}.png", name);
     img.save(&path).unwrap();
     println!("Generated: {}", path);
+}
+
+fn save_building_with_icon(name: &str, img: RgbaImage) {
+    let icon = scale_to_icon(&img);
+    save_building(name, img);
+    save_building_icon(name, icon);
+}
+
+fn save_building_icon(name: &str, img: RgbaImage) {
+    let path = format!("assets/ui/buildings/ui_{}.png", name);
+    img.save(&path).unwrap();
+    println!("Generated: {}", path);
+}
+
+fn scale_to_icon(img: &RgbaImage) -> RgbaImage {
+    image::imageops::resize(img, ICON_WIDTH, ICON_HEIGHT, FilterType::Nearest)
 }
 
 fn create_core_stage_1a() -> RgbaImage {

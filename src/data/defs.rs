@@ -23,6 +23,7 @@ pub struct BuildingDef {
     pub power_consumption: f32,
     pub hotkey: Option<String>,
     pub texture: String,
+    pub icon: String,
     pub build_menu_order: i32,
     pub show_in_build_menu: bool,
     pub start_unlocked: bool,

@@ -145,6 +145,8 @@ pub struct PlanetState {
     #[serde(skip, default)]
     pub show_help: bool,
     #[serde(skip, default)]
+    pub build_palette_scroll: f32,
+    #[serde(skip, default)]
     pub particles: Vec<Particle>,
     #[serde(skip, default)]
     pub particle_timer: f32,
@@ -238,6 +240,7 @@ impl PlanetState {
             drag_last_pos: None,
             selected_tile: None,
             show_help: false,
+            build_palette_scroll: 0.0,
             particles: Vec::new(),
             particle_timer: 0.0,
             placement_anims: Vec::new(),
