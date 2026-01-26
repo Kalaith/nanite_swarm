@@ -159,39 +159,65 @@ fn draw_build_card(
     let can_afford = state.resources.can_afford(mineral_cost, energy_cost);
     let unlocked = state.is_building_unlocked(building_type);
 
+    // Improved color scheme
     let base_color = if !unlocked {
-        Colors::SURFACE_DARK
+        Color::new(0.08, 0.08, 0.08, 1.0) // Darker for locked
     } else if selected {
-        Colors::PRIMARY_SOFT
+        Color::new(0.0, 0.4, 0.5, 1.0) // Cyan tint for selected
     } else if hovered {
-        Colors::SURFACE
+        Color::new(0.15, 0.16, 0.17, 1.0) // Slightly lighter for hover
     } else {
         Colors::SURFACE_DARK
     };
-    let border_color = if unlocked && can_afford { Colors::PANEL_BORDER } else { Colors::SECONDARY };
-    let text_color = if unlocked && can_afford { Colors::TEXT } else { Colors::TEXT_DIM };
 
-    draw_rectangle(x + 2.0, y + 3.0, width, height, Color::new(0.0, 0.0, 0.0, 0.3));
+    let border_color = if selected {
+        Colors::PRIMARY
+    } else if unlocked && can_afford {
+        Colors::PANEL_BORDER
+    } else {
+        Colors::SECONDARY
+    };
+
+    let border_width = if selected { 2.0 } else { 1.0 };
+
+    // Shadow and base
+    draw_rectangle(x + 3.0, y + 4.0, width, height, Color::new(0.0, 0.0, 0.0, 0.4));
     draw_rectangle(x, y, width, height, base_color);
-    draw_rectangle_lines(x, y, width, height, 1.0, border_color);
+    draw_rectangle_lines(x, y, width, height, border_width, border_color);
 
-    let hotkey = building_type.hotkey().unwrap_or(' ');
-    draw_text(&format!("[{}]", hotkey), x + 8.0, y + 16.0, 11.0, Colors::PRIMARY);
+    // Selection glow
+    if selected {
+        draw_rectangle_lines(x - 1.0, y - 1.0, width + 2.0, height + 2.0, 1.0, Color::new(0.0, 0.85, 1.0, 0.6));
+    }
 
-    let icon = textures
+    // Hotkey in top right
+    if let Some(hotkey) = building_type.hotkey() {
+        let hotkey_text = format!("[{}]", hotkey);
+        let hotkey_width = measure_text(&hotkey_text, None, 10.0 as u16, 1.0).width;
+        draw_text(&hotkey_text, x + width - hotkey_width - 6.0, y + 14.0, 10.0, Colors::PRIMARY_SOFT);
+    }
+
+    // Icon - larger and better positioned
+    let icon_size = 40.0;
+    let icon_x = x + (width - icon_size) * 0.5;
+    let icon_y = y + 18.0;
+
+    if let Some(icon) = textures
         .building_icons
         .by_id
         .get(building_type.id())
-        .or_else(|| textures.buildings.by_id.get(building_type.id()));
-    if let Some(icon) = icon {
-        let icon_size = (width - 16.0).min(48.0);
-        let icon_x = x + (width - icon_size) * 0.5;
-        let icon_y = y + 22.0;
+        .or_else(|| textures.buildings.by_id.get(building_type.id()))
+    {
+        let icon_tint = if unlocked && can_afford {
+            WHITE
+        } else {
+            Color::new(0.5, 0.5, 0.5, 1.0) // Gray out if not affordable
+        };
         draw_texture_ex(
             icon,
             icon_x,
             icon_y,
-            WHITE,
+            icon_tint,
             DrawTextureParams {
                 dest_size: Some(vec2(icon_size, icon_size)),
                 ..Default::default()
@@ -199,26 +225,48 @@ fn draw_build_card(
         );
     }
 
+    // Name - centered below icon
+    let name_y = icon_y + icon_size + 8.0;
     let name_text = fit_text_to_width(building_type.name(), width - 12.0, 12.0);
-    draw_text(&name_text, x + 6.0, y + 76.0, 12.0, text_color);
-    draw_text(
-        &format!("{}M {}E", mineral_cost as i32, energy_cost as i32),
-        x + 6.0,
-        y + 90.0,
-        10.0,
-        if unlocked { Colors::TEXT_DIM } else { Colors::SECONDARY },
-    );
-    draw_text(
-        &format!("P {}", format_power_delta(building_type.power_delta())),
-        x + 6.0,
-        y + 102.0,
-        10.0,
-        Colors::PRIMARY_SOFT,
-    );
+    let name_color = if unlocked && can_afford {
+        Colors::TEXT
+    } else {
+        Colors::TEXT_DIM
+    };
+    let name_width = measure_text(&name_text, None, 12.0 as u16, 1.0).width;
+    draw_text(&name_text, x + (width - name_width) * 0.5, name_y, 12.0, name_color);
+
+    // Cost - side by side with better colors
+    let cost_y = name_y + 18.0;
+    let minerals_text = format!("{}M", mineral_cost as i32);
+    let energy_text = format!("{}E", energy_cost as i32);
+
+    let minerals_color = if unlocked && state.resources.minerals >= mineral_cost {
+        Colors::ACCENT
+    } else {
+        Colors::ERROR
+    };
+    let energy_color = if unlocked && state.resources.energy >= energy_cost {
+        Colors::WARNING
+    } else {
+        Colors::ERROR
+    };
+
+    draw_text(&minerals_text, x + 8.0, cost_y, 11.0, minerals_color);
+    let minerals_width = measure_text(&minerals_text, None, 11.0 as u16, 1.0).width;
+    draw_text(&energy_text, x + 8.0 + minerals_width + 8.0, cost_y, 11.0, energy_color);
+
+    // Power info - right aligned
+    let power_text = format!("P {}", format_power_delta(building_type.power_delta()));
+    let power_width = measure_text(&power_text, None, 10.0 as u16, 1.0).width;
+    draw_text(&power_text, x + width - power_width - 8.0, cost_y, 10.0, Colors::PRIMARY_SOFT);
+
+    // Locked indicator
     if !unlocked {
-        draw_text("Locked", x + width - 44.0, y + 16.0, 10.0, Colors::WARNING);
+        draw_text("LOCKED", x + 8.0, y + height - 8.0, 9.0, Colors::WARNING);
     }
 
+    // Click handling
     if unlocked && hovered && is_mouse_button_pressed(MouseButton::Left) {
         state.select_building(building_type);
     }
