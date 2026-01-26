@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use macroquad::prelude::Color;
 use macroquad::rand::gen_range;
 use crate::engine::{Grid, GridPos, BuildingType, DroneManager, find_path, DroneState, TerrainType};
+use crate::data::GameConfig;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DUST_RATE: f32 = 0.12; // dust per second
@@ -13,7 +14,7 @@ const FILTER_RADIUS: i32 = 3;
 const FILTER_RATE_MULTIPLIER: f32 = 0.6;
 const POLLUTION_RADIUS: i32 = 3;
 const POLLUTION_RATE_MULTIPLIER: f32 = 1.3;
-const CORE_DATA_RATE: f32 = 0.25; // passive data trickle to unlock first techs
+// Config-driven values are loaded from assets/game_config.json.
 
 fn unix_seconds_now() -> i64 {
     SystemTime::now()
@@ -77,7 +78,7 @@ pub struct ResearchProgress {
 impl Default for ResearchProgress {
     fn default() -> Self {
         Self {
-            unlocked_techs: vec!["basic_mining".to_string()],
+            unlocked_techs: crate::data::game_data().research.starting_unlocked.clone(),
             current_research: None,
             research_progress: 0.0,
         }
@@ -101,9 +102,12 @@ pub struct PlanetState {
     pub grid: Grid,
     pub drones: DroneManager,
     pub research: ResearchProgress,
+    pub config: GameConfig,
     pub time_played: f64,
     pub selected_building: Option<BuildingType>,
     pub power_balance: f32,
+    #[serde(skip, default)]
+    pub biomass_power_bonus: f32,
     pub battery_seconds: f32,
     pub last_saved_unix: i64,
     pub achievements: Vec<Achievement>,
@@ -155,28 +159,40 @@ pub struct PlanetState {
 }
 
 impl PlanetState {
-    pub fn new(name: &str, width: u32, height: u32, seed: u64) -> Self {
+    pub fn new(name: &str, width: u32, height: u32, seed: u64, config: GameConfig) -> Self {
         let mut grid = Grid::new_with_terrain(width, height, seed);
+        grid.initialize_forest_biomass(config.resources.forest_biomass);
 
         // Place Core at center
         let center = GridPos::new(width as i32 / 2, height as i32 / 2);
         grid.place_building(center, BuildingType::Core);
         grid.update_power_grid();
 
+        let mut unlocked_buildings = Vec::new();
+        for def in &crate::data::game_data().buildings {
+            if def.start_unlocked {
+                if let Some(building_type) = BuildingType::from_id(&def.id) {
+                    unlocked_buildings.push(building_type);
+                }
+            }
+        }
+
         Self {
             name: name.to_string(),
             resources: Resources {
-                energy: 100.0,
-                minerals: 50.0,
+                energy: config.resources.starting_energy,
+                minerals: config.resources.starting_minerals,
                 data: 0.0,
                 biomass: 0.0,
             },
             grid,
-            drones: DroneManager::new(10.0, 2.0),
+            drones: DroneManager::new(config.resources.drone_carry_capacity, config.resources.drone_speed),
             research: ResearchProgress::default(),
+            config,
             time_played: 0.0,
             selected_building: Some(BuildingType::Drill),
             power_balance: 10.0,
+            biomass_power_bonus: 0.0,
             battery_seconds: 4.0 * 60.0 * 60.0,
             last_saved_unix: unix_seconds_now(),
             achievements: vec![
@@ -215,7 +231,7 @@ impl PlanetState {
             tutorial_step: 0,
             tutorial_hidden: false,
             tutorial_done: false,
-            unlocked_buildings: vec![BuildingType::Drill],
+            unlocked_buildings,
             last_offline_seconds: 0.0,
             last_offline_simulated: 0.0,
             offline_notice_timer: 0.0,
@@ -364,6 +380,7 @@ impl PlanetState {
                     }
                     TerrainType::Forest => {
                         tile.forest_cleared = true;
+                        tile.biomass_amount = 0.0;
                         self.forest_harvested_count += 1;
                     }
                     _ => {}
@@ -404,6 +421,7 @@ impl PlanetState {
 
         self.update_dust(sim_delta);
         self.update_drone_speeds();
+        self.update_biomass_harvesters(sim_delta);
         self.update_tutorial();
 
         if self.power_collapse_cooldown > 0.0 {
@@ -459,15 +477,15 @@ impl PlanetState {
         // Power-based energy generation
         self.grid.update_power_grid();
         let net_power = self.grid.net_power();
-        self.power_balance = net_power;
-        self.resources.energy += net_power * sim_delta;
+        self.power_balance = net_power + self.biomass_power_bonus;
+        self.resources.energy += self.power_balance * sim_delta;
 
         // Passive data trickle from Core to avoid research deadlock
         if let Some(core_pos) = self.grid.find_core() {
             if let Some(core_tile) = self.grid.get(core_pos) {
                 if let Some(core) = core_tile.building.as_ref() {
                     if core.powered && !core.is_dust_stalled() {
-                        self.resources.data += CORE_DATA_RATE * sim_delta * core.dust_efficiency();
+                        self.resources.data += self.config.resources.core_data_rate * sim_delta * core.dust_efficiency();
                     }
                 }
             }
@@ -486,8 +504,8 @@ impl PlanetState {
         self.battery_seconds = (self.battery_seconds - delta_time).max(0.0);
 
         // Cap resources
-        self.resources.energy = self.resources.energy.clamp(0.0, 1000.0);
-        self.resources.minerals = self.resources.minerals.min(1000.0);
+        self.resources.energy = self.resources.energy.clamp(0.0, self.config.resources.max_energy);
+        self.resources.minerals = self.resources.minerals.min(self.mineral_capacity());
         self.resources.data = self.resources.data.min(1000.0);
         self.resources.biomass = self.resources.biomass.min(1000.0);
 
@@ -638,6 +656,50 @@ impl PlanetState {
         }
     }
 
+    fn update_biomass_harvesters(&mut self, delta_time: f32) {
+        let output = self.config.resources.biomass_power_output;
+        let rate = self.config.resources.biomass_consumption_rate;
+        let mut power_bonus = 0.0;
+
+        for (_, tile) in self.grid.iter_tiles_mut() {
+            let Some(building) = tile.building.as_mut() else { continue; };
+            if building.building_type != BuildingType::BiomassHarvester {
+                continue;
+            }
+
+            if tile.terrain != TerrainType::Forest || tile.biomass_amount <= 0.0 {
+                continue;
+            }
+            if !building.powered || building.is_dust_stalled() {
+                continue;
+            }
+
+            let available = tile.biomass_amount;
+            if available <= 0.0 || rate <= 0.0 {
+                continue;
+            }
+
+            let consume = (rate * delta_time).min(available);
+            tile.biomass_amount = (tile.biomass_amount - consume).max(0.0);
+            self.resources.biomass += consume;
+
+            let fraction = if rate * delta_time > 0.0 {
+                consume / (rate * delta_time)
+            } else {
+                0.0
+            };
+            power_bonus += output * fraction * building.dust_power_generation_multiplier();
+
+            if tile.biomass_amount <= 0.0 {
+                tile.terrain = TerrainType::Empty;
+                tile.forest_cleared = true;
+                tile.filter = false;
+            }
+        }
+
+        self.biomass_power_bonus = power_bonus;
+    }
+
     fn update_tutorial(&mut self) {
         if self.tutorial_done {
             return;
@@ -652,14 +714,18 @@ impl PlanetState {
                     .unwrap_or(false)
             });
         let conduits_unlocked = self.is_building_unlocked(BuildingType::Conduit);
+        let server_unlocked = self.is_building_unlocked(BuildingType::ServerBank);
+        let wind_unlocked = self.is_building_unlocked(BuildingType::WindTurbine);
+        let has_wind_turbine = !self.grid.find_buildings(BuildingType::WindTurbine).is_empty();
         let has_server_bank = !self.grid.find_buildings(BuildingType::ServerBank).is_empty();
 
         match self.tutorial_step {
             0 if has_drill => self.tutorial_step = 1,
             1 if conduits_unlocked => self.tutorial_step = 2,
             2 if drill_connected => self.tutorial_step = 3,
-            3 if has_server_bank => {
-                self.tutorial_step = 4;
+            3 if server_unlocked && has_server_bank => self.tutorial_step = 4,
+            4 if wind_unlocked && has_wind_turbine => {
+                self.tutorial_step = 5;
                 self.tutorial_done = true;
             }
             _ => {}
@@ -701,6 +767,7 @@ impl PlanetState {
             tile.terrain = TerrainType::Rough;
             tile.filter = true;
             tile.forest_cleared = true;
+            tile.biomass_amount = 0.0;
             self.forest_harvested_count += 1;
             return true;
         }
@@ -728,6 +795,15 @@ impl PlanetState {
         if !self.unlocked_buildings.contains(&building_type) {
             self.unlocked_buildings.push(building_type);
         }
+    }
+
+    pub fn mineral_capacity(&self) -> f32 {
+        let storage_count = self.grid.find_buildings(BuildingType::Storage).len() as f32;
+        let mut cap = self.config.resources.base_mineral_cap + storage_count * self.config.resources.storage_bonus;
+        if self.research.unlocked_techs.contains(&"storage_optimization".to_string()) {
+            cap += self.config.resources.storage_tech_bonus;
+        }
+        cap
     }
 
     pub fn battery_time_left(&self) -> (i32, i32) {
@@ -871,7 +947,7 @@ impl PlanetState {
 
 impl Default for PlanetState {
     fn default() -> Self {
-        Self::new("Mars", 24, 24, 42)
+        Self::new("Mars", 24, 24, 42, GameConfig::default())
     }
 }
 

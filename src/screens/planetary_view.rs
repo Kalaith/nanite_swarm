@@ -6,6 +6,7 @@ use crate::engine::{GridPos, TerrainType, BuildingType, DroneState};
 use crate::ui::{Colors, draw_panel, draw_button_sized};
 use crate::assets::GameTextures;
 use crate::directives::Directive;
+use crate::data;
 
 const TILE_SIZE: f32 = 28.0;
 const HUD_HEIGHT: f32 = 72.0;
@@ -67,6 +68,21 @@ fn format_hours_minutes(seconds: f32) -> (i32, i32) {
     let hours = total / 3600;
     let minutes = (total % 3600) / 60;
     (hours, minutes)
+}
+
+fn keycode_from_hotkey(hotkey: char) -> Option<KeyCode> {
+    match hotkey {
+        '1' => Some(KeyCode::Key1),
+        '2' => Some(KeyCode::Key2),
+        '3' => Some(KeyCode::Key3),
+        '4' => Some(KeyCode::Key4),
+        '5' => Some(KeyCode::Key5),
+        '6' => Some(KeyCode::Key6),
+        '7' => Some(KeyCode::Key7),
+        '8' => Some(KeyCode::Key8),
+        '9' => Some(KeyCode::Key9),
+        _ => None,
+    }
 }
 
 fn draw_progress_bar(x: f32, y: f32, width: f32, height: f32, progress: f32, color: Color) {
@@ -203,42 +219,38 @@ fn terrain_color_at(pos: GridPos, terrain: TerrainType, revealed: bool) -> Color
         return Color::new(0.05, 0.05, 0.05, 1.0);
     }
 
-    match terrain {
-        TerrainType::Empty => {
-            let noise = hash01((pos.x as u32).wrapping_mul(73856093) ^ (pos.y as u32).wrapping_mul(19349663));
-            let base = 0.11 + noise * 0.04;
-            Color::new(base, base, base + 0.01, 1.0)
-        }
-        TerrainType::Mountain => Color::new(0.4, 0.35, 0.3, 1.0),
-        TerrainType::Forest => Color::new(0.15, 0.3, 0.15, 1.0),
-        TerrainType::Water => Color::new(0.1, 0.2, 0.4, 1.0),
-        TerrainType::Rough => Color::new(0.2, 0.18, 0.15, 1.0),
-        TerrainType::Void => Color::new(0.02, 0.02, 0.02, 1.0),
+    let def = data::game_data().terrain(terrain.id());
+    let mut color = Color::new(def.color[0], def.color[1], def.color[2], def.color[3]);
+
+    if terrain == TerrainType::Empty {
+        let noise = hash01((pos.x as u32).wrapping_mul(73856093) ^ (pos.y as u32).wrapping_mul(19349663));
+        let offset = noise * 0.04;
+        color = Color::new(
+            (color.r + offset).min(1.0),
+            (color.g + offset).min(1.0),
+            (color.b + offset * 0.8).min(1.0),
+            color.a,
+        );
     }
+
+    color
 }
 
 fn terrain_texture<'a>(terrain: TerrainType, textures: &'a GameTextures) -> &'a Texture2D {
-    match terrain {
-        TerrainType::Empty => &textures.terrain.ground,
-        TerrainType::Mountain => &textures.terrain.mountain,
-        TerrainType::Forest => &textures.terrain.forest,
-        TerrainType::Water => &textures.terrain.water,
-        TerrainType::Rough => &textures.terrain.rough,
-        TerrainType::Void => &textures.terrain.void,
-    }
+    let id = terrain.id();
+    textures
+        .terrain
+        .by_id
+        .get(id)
+        .unwrap_or(&textures.terrain.by_id["empty"])
 }
 
 fn building_texture<'a>(building_type: BuildingType, textures: &'a GameTextures) -> &'a Texture2D {
-    match building_type {
-        BuildingType::Core => &textures.buildings.core_stage_1a,
-        BuildingType::Drill => &textures.buildings.drill,
-        BuildingType::Conduit => &textures.buildings.conduit_straight_h,
-        BuildingType::Bridge => &textures.buildings.bridge,
-        BuildingType::PowerNode => &textures.buildings.power_node,
-        BuildingType::WindTurbine => &textures.buildings.wind_turbine,
-        BuildingType::ServerBank => &textures.buildings.server_bank,
-        BuildingType::Sweeper => &textures.buildings.sweeper,
-    }
+    textures
+        .buildings
+        .by_id
+        .get(building_type.id())
+        .unwrap_or(&textures.buildings.core_stage_1a)
 }
 
 fn conduit_texture<'a>(connections: &[bool; 4], textures: &'a GameTextures) -> &'a Texture2D {
@@ -252,13 +264,13 @@ fn conduit_texture<'a>(connections: &[bool; 4], textures: &'a GameTextures) -> &
         4 => &textures.buildings.conduit_cross,
         3 => {
             if !n {
-                &textures.buildings.conduit_tee_n
-            } else if !e {
-                &textures.buildings.conduit_tee_e
-            } else if !s {
                 &textures.buildings.conduit_tee_s
-            } else {
+            } else if !e {
                 &textures.buildings.conduit_tee_w
+            } else if !s {
+                &textures.buildings.conduit_tee_n
+            } else {
+                &textures.buildings.conduit_tee_e
             }
         }
         2 => {
@@ -313,6 +325,8 @@ fn conduit_connections(state: &PlanetState, pos: GridPos) -> [bool; 4] {
                         | BuildingType::WindTurbine
                         | BuildingType::ServerBank
                         | BuildingType::Sweeper
+                        | BuildingType::Storage
+                        | BuildingType::BiomassHarvester
                 );
             }
         }
@@ -465,11 +479,13 @@ pub fn render_planetary_view(
 
             // Draw harvestable indicator
             if tile.revealed && tile.terrain.is_harvestable() && tile.building.is_none() {
-                let indicator_color = match tile.terrain {
-                    TerrainType::Mountain => Color::new(0.6, 0.5, 0.3, 0.5),
-                    TerrainType::Forest => Color::new(0.2, 0.5, 0.2, 0.5),
-                    _ => Color::new(1.0, 1.0, 1.0, 0.3),
-                };
+                let terrain_def = data::game_data().terrain(tile.terrain.id());
+                let indicator_color = Color::new(
+                    terrain_def.color[0],
+                    terrain_def.color[1],
+                    terrain_def.color[2],
+                    0.5,
+                );
                 draw_rectangle_lines(px + 2.0, py + 2.0, TILE_SIZE - 5.0, TILE_SIZE - 5.0, 1.0, indicator_color);
             }
 
@@ -529,8 +545,9 @@ pub fn render_planetary_view(
             }
 
             if tile.bridge {
+                let texture = building_texture(BuildingType::Bridge, textures);
                 draw_texture_ex(
-                    &textures.buildings.bridge,
+                    texture,
                     px,
                     py,
                     WHITE,
@@ -626,7 +643,24 @@ pub fn render_planetary_view(
         }
 
         if drone.carrying > 0.0 && drone.state != DroneState::Error {
-            draw_circle(drone_x, drone_y - 6.0, 2.0, Colors::ACCENT);
+            // Visible cargo packet between drill and core
+            let mut cargo_x = drone_x;
+            let mut cargo_y = drone_y;
+            if drone.path_index > 0 && drone.path_index < drone.path.len() {
+                let prev = drone.path[drone.path_index - 1];
+                let next = drone.path[drone.path_index];
+                let dir_x = (next.x - prev.x) as f32;
+                let dir_y = (next.y - prev.y) as f32;
+                let length = (dir_x * dir_x + dir_y * dir_y).sqrt().max(0.01);
+                let norm_x = dir_x / length;
+                let norm_y = dir_y / length;
+                cargo_x += norm_x * 6.0;
+                cargo_y += norm_y * 6.0;
+            } else {
+                cargo_y -= 6.0;
+            }
+            draw_rectangle(cargo_x - 2.0, cargo_y - 2.0, 4.0, 4.0, Colors::ACCENT);
+            draw_circle(cargo_x, cargo_y, 2.0, Color::new(1.0, 0.8, 0.4, 0.9));
         }
 
         if state.power_collapse_shutdown > 0.0 {
@@ -671,25 +705,9 @@ fn draw_ui_panels(
     draw_panel(0.0, 0.0, screen_w, HUD_HEIGHT);
     draw_text("NANITE SWARM", 18.0, 30.0, 18.0, Colors::PRIMARY);
     draw_text(&state.name, 18.0, 52.0, 14.0, Colors::TEXT_DIM);
-    // Directive
-    draw_text(
-        &format!("Directive: {} [{}/{}]", directive.description, directive.progress, directive.target),
-        260.0,
-        30.0,
-        12.0,
-        if directive.completed { Colors::SUCCESS } else { Colors::TEXT_DIM },
-    );
-    draw_text(
-        &format!("Timer: {:.0}s", directive.duration.max(0.0)),
-        260.0,
-        46.0,
-        11.0,
-        Colors::TEXT_DIM,
-    );
-
     if !state.tutorial_done && !state.tutorial_hidden {
-        let panel_w = 420.0;
-        let panel_h = 96.0;
+        let panel_w = 440.0;
+        let panel_h = 110.0;
         let map_left = SIDEBAR_WIDTH + 12.0;
         let map_right = screen_w - RIGHTBAR_WIDTH - 12.0;
         let panel_x = map_left + (map_right - map_left - panel_w) * 0.5;
@@ -697,16 +715,41 @@ fn draw_ui_panels(
         draw_panel(panel_x, panel_y, panel_w, panel_h);
         draw_text("Tutorial", panel_x + 12.0, panel_y + 26.0, 16.0, Colors::PRIMARY);
 
-        let (title, body) = match state.tutorial_step {
-            0 => ("Step 1: Place a Drill", "Place a Drill next to the Core so it is powered."),
-            1 => ("Step 2: Unlock Power Grid", "Open Research (R) and unlock Power Grid."),
-            2 => ("Step 3: Connect to Core", "Select Conduit (2) and drag to the Core."),
-            3 => ("Step 4: Start Research", "Place a Server Bank to generate Data."),
-            _ => ("All set", "You are ready to expand."),
+        let conduits_unlocked = state.is_building_unlocked(BuildingType::Conduit);
+        let wind_unlocked = state.is_building_unlocked(BuildingType::WindTurbine);
+        let server_unlocked = state.is_building_unlocked(BuildingType::ServerBank);
+        let (title, body, hint) = match state.tutorial_step {
+            0 => ("Step 1: Start Mining", "Place a Drill near the Core to collect minerals.", "Need more materials? Build another Drill."),
+            1 => {
+                if !conduits_unlocked {
+                    ("Step 2: Unlock Conduits", "Open Research (R) and unlock Power Grid.", "Conduits let you expand beyond the Core area.")
+                } else {
+                    ("Step 2: Connect to Core", "Select Conduit (2) and drag to the Core.", "Connections power your grid and move resources.")
+                }
+            }
+            2 => ("Step 3: Connect to Core", "Select Conduit (2) and drag to the Core.", "Connections power your grid and move resources."),
+            3 => {
+                if !server_unlocked {
+                    ("Step 4: Faster Research", "Research Data Processing to unlock Server Banks.", "Server Banks generate Data but consume power.")
+                } else {
+                    ("Step 4: Faster Research", "Build a Server Bank to generate Data.", "More data = faster tech unlocks.")
+                }
+            }
+            4 => {
+                if !wind_unlocked {
+                    ("Step 5: Power Basics", "Power flows from the Core through Conduits and Power Nodes.", "Research Wind Power to unlock turbines that generate more power.")
+                } else {
+                    ("Step 5: Build Power", "Place a Wind Turbine on any powered tile or Mountain.", "Connect it with Conduits so power reaches your buildings.")
+                }
+            }
+            _ => ("All set", "You are ready to expand.", ""),
         };
         draw_text(title, panel_x + 12.0, panel_y + 50.0, 13.0, Colors::TEXT);
-        draw_text(body, panel_x + 12.0, panel_y + 70.0, 12.0, Colors::TEXT_DIM);
-        draw_text("Press T to hide", panel_x + 12.0, panel_y + 94.0, 11.0, Colors::TEXT_DIM);
+        draw_text(body, panel_x + 12.0, panel_y + 68.0, 12.0, Colors::TEXT_DIM);
+        if !hint.is_empty() {
+            draw_text(hint, panel_x + 12.0, panel_y + 86.0, 11.0, Colors::PRIMARY_SOFT);
+        }
+        draw_text("Press T to hide", panel_x + panel_w - 110.0, panel_y + 86.0, 11.0, Colors::TEXT_DIM);
     }
 
     // Resource chips
@@ -719,26 +762,34 @@ fn draw_ui_panels(
     draw_resource_chip(chips_x + (chip_width + chip_spacing), chips_y, chip_width, "Minerals", state.resources.minerals, Colors::ACCENT);
     draw_resource_chip(chips_x + 2.0 * (chip_width + chip_spacing), chips_y, chip_width, "Data", state.resources.data, Colors::PRIMARY);
     draw_resource_chip(chips_x + 3.0 * (chip_width + chip_spacing), chips_y, chip_width, "Biomass", state.resources.biomass, Colors::SUCCESS);
+    draw_text(
+        &format!("{:.0}/{:.0}", state.resources.minerals, state.mineral_capacity()),
+        chips_x + (chip_width + chip_spacing) + 60.0,
+        chips_y + 30.0,
+        10.0,
+        Colors::TEXT_DIM,
+    );
 
     // Status block
     let power_color = if state.power_balance >= 0.0 { Colors::SUCCESS } else { Colors::ERROR };
+    let status_x = screen_w - 300.0;
     draw_text(
         &format!("Power {:+.0}/s", state.power_balance),
-        screen_w - 330.0,
-        28.0,
-        14.0,
+        status_x,
+        56.0,
+        11.0,
         power_color,
     );
     let (hours, minutes) = state.battery_time_left();
     draw_text(
         &format!("Battery {}h {}m", hours, minutes),
-        screen_w - 330.0,
-        50.0,
-        12.0,
+        status_x,
+        68.0,
+        11.0,
         Colors::PRIMARY_SOFT,
     );
     if state.battery_seconds <= 0.0 {
-        draw_text("HIBERNATION", screen_w - 460.0, 50.0, 12.0, Colors::WARNING);
+        draw_text("HIBERNATION", status_x - 130.0, 68.0, 11.0, Colors::WARNING);
     }
 
     // Action buttons
@@ -798,18 +849,18 @@ fn draw_ui_panels(
     draw_text("Build Palette", sidebar_x + 12.0, sidebar_y + 26.0, 16.0, Colors::PRIMARY);
     draw_text("Click a card or press hotkeys", sidebar_x + 12.0, sidebar_y + 44.0, 11.0, Colors::TEXT_DIM);
 
-    let buildings = [
-        BuildingType::Drill,
-        BuildingType::Conduit,
-        BuildingType::Bridge,
-        BuildingType::PowerNode,
-        BuildingType::WindTurbine,
-        BuildingType::ServerBank,
-        BuildingType::Sweeper,
-    ];
+    let mut building_defs: Vec<_> = data::game_data()
+        .buildings
+        .iter()
+        .filter(|def| def.show_in_build_menu)
+        .collect();
+    building_defs.sort_by_key(|def| def.build_menu_order);
 
     let mut card_y = sidebar_y + 58.0;
-    for building in buildings {
+    for def in building_defs {
+        let Some(building) = BuildingType::from_id(&def.id) else {
+            continue;
+        };
         if !state.is_building_unlocked(building) {
             continue;
         }
@@ -969,6 +1020,13 @@ fn draw_ui_panels(
         12.0,
         Colors::TEXT_DIM,
     );
+    draw_text(
+        &format!("Directive: {} [{}/{}] ({:.0}s)", directive.description, directive.progress, directive.target, directive.duration.max(0.0)),
+        screen_w - 520.0,
+        screen_h - 38.0,
+        11.0,
+        if directive.completed { Colors::SUCCESS } else { Colors::PRIMARY_SOFT },
+    );
     if let Some(selected) = state.selected_building {
         draw_text(
             &format!("Build mode: {}", selected.name()),
@@ -993,7 +1051,7 @@ fn draw_ui_panels(
         draw_text("Right Click: Cancel selection / Harvest", help_x + 16.0, help_y + 75.0, 14.0, Colors::TEXT);
         draw_text("H: Harvest terrain", help_x + 16.0, help_y + 95.0, 14.0, Colors::TEXT);
         draw_text("R: Research  |  M: Map", help_x + 16.0, help_y + 115.0, 14.0, Colors::TEXT);
-        draw_text("1-7: Select buildings", help_x + 16.0, help_y + 135.0, 14.0, Colors::TEXT);
+        draw_text("1-9: Select buildings", help_x + 16.0, help_y + 135.0, 14.0, Colors::TEXT);
         draw_text("F: Convert forest to filter", help_x + 16.0, help_y + 155.0, 14.0, Colors::TEXT);
         draw_text("F1: Toggle help", help_x + 16.0, help_y + 175.0, 14.0, Colors::TEXT_DIM);
     }
@@ -1004,26 +1062,22 @@ fn draw_ui_panels(
 /// Handle keyboard and mouse input
 fn handle_input(state: &mut PlanetState, hovered_pos: Option<GridPos>) -> PlanetaryAction {
     // Building hotkeys
-    if is_key_pressed(KeyCode::Key1) {
-        state.select_building(BuildingType::Drill);
-    }
-    if is_key_pressed(KeyCode::Key2) {
-        state.select_building(BuildingType::Conduit);
-    }
-    if is_key_pressed(KeyCode::Key6) {
-        state.select_building(BuildingType::Bridge);
-    }
-    if is_key_pressed(KeyCode::Key3) {
-        state.select_building(BuildingType::PowerNode);
-    }
-    if is_key_pressed(KeyCode::Key4) {
-        state.select_building(BuildingType::WindTurbine);
-    }
-    if is_key_pressed(KeyCode::Key5) {
-        state.select_building(BuildingType::ServerBank);
-    }
-    if is_key_pressed(KeyCode::Key7) {
-        state.select_building(BuildingType::Sweeper);
+    for def in &data::game_data().buildings {
+        let Some(hotkey) = def.hotkey.as_ref().and_then(|key| key.chars().next()) else {
+            continue;
+        };
+        let Some(keycode) = keycode_from_hotkey(hotkey) else {
+            continue;
+        };
+        if !is_key_pressed(keycode) {
+            continue;
+        }
+        let Some(building_type) = BuildingType::from_id(&def.id) else {
+            continue;
+        };
+        if state.is_building_unlocked(building_type) {
+            state.select_building(building_type);
+        }
     }
 
     if is_key_pressed(KeyCode::F1) {

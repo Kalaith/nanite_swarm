@@ -34,114 +34,15 @@ pub struct ResearchTree {
 
 impl Default for ResearchTree {
     fn default() -> Self {
-        Self {
-            nodes: vec![
-                // Core node (always unlocked)
-                ResearchNode::new(
-                    "core",
-                    "AI Core",
-                    "Central processing unit",
-                    0.0,
-                    vec![],
-                    (0.0, 0.0),
-                ),
-                // Tier 1 - Basic techs (require core)
-                ResearchNode::new(
-                    "basic_mining",
-                    "Basic Mining",
-                    "Enables drill construction",
-                    0.0, // Free - starting tech
-                    vec!["core"],
-                    (-1.5, -1.0),
-                ),
-                ResearchNode::new(
-                    "power_grid",
-                    "Power Grid",
-                    "Enables conduits, power nodes, and bridges",
-                    10.0,
-                    vec!["core"],
-                    (1.5, -1.0),
-                ),
-                ResearchNode::new(
-                    "data_processing",
-                    "Data Processing",
-                    "Enables server banks for Data generation",
-                    15.0,
-                    vec!["core"],
-                    (0.0, -1.5),
-                ),
-                // Tier 2 - Advanced techs
-                ResearchNode::new(
-                    "efficient_drills",
-                    "Efficient Drills",
-                    "+50% drill output",
-                    25.0,
-                    vec!["basic_mining"],
-                    (-2.0, -2.0),
-                ),
-                ResearchNode::new(
-                    "drone_capacity",
-                    "Drone Capacity",
-                    "+100% drone carry capacity",
-                    30.0,
-                    vec!["basic_mining"],
-                    (-1.0, -2.0),
-                ),
-                ResearchNode::new(
-                    "wind_power",
-                    "Wind Power",
-                    "Enables wind turbines",
-                    20.0,
-                    vec!["power_grid"],
-                    (2.0, -2.0),
-                ),
-                ResearchNode::new(
-                    "power_efficiency",
-                    "Power Efficiency",
-                    "-25% power consumption",
-                    35.0,
-                    vec!["power_grid"],
-                    (1.0, -2.0),
-                ),
-                ResearchNode::new(
-                    "self_cleaning_servos",
-                    "Self-Cleaning Servos",
-                    "-40% dust accumulation and unlocks Sweepers",
-                    30.0,
-                    vec!["data_processing"],
-                    (2.5, -2.0),
-                ),
-                ResearchNode::new(
-                    "advanced_research",
-                    "Advanced Research",
-                    "+50% data generation",
-                    40.0,
-                    vec!["data_processing"],
-                    (0.0, -2.5),
-                ),
-                // Tier 3 - Specializations
-                ResearchNode::new(
-                    "mass_driver",
-                    "Mass Driver",
-                    "Enables interplanetary transport",
-                    100.0,
-                    vec!["efficient_drills", "power_efficiency"],
-                    (0.0, -3.5),
-                ),
-                ResearchNode::new(
-                    "neural_expansion",
-                    "Neural Expansion",
-                    "Unlocks advanced AI capabilities",
-                    150.0,
-                    vec!["advanced_research", "mass_driver"],
-                    (0.0, -4.5),
-                ),
-            ],
-        }
+        crate::data::game_data().research_tree()
     }
 }
 
 impl ResearchTree {
+    pub fn from_nodes(nodes: Vec<ResearchNode>) -> Self {
+        Self { nodes }
+    }
+
     /// Get a node by ID
     pub fn get_node(&self, id: &str) -> Option<&ResearchNode> {
         self.nodes.iter().find(|n| n.id == id)
@@ -216,7 +117,7 @@ pub struct ResearchState {
 impl Default for ResearchState {
     fn default() -> Self {
         Self {
-            unlocked: vec!["core".to_string(), "basic_mining".to_string()],
+            unlocked: crate::data::game_data().research.starting_unlocked.clone(),
             current_research: None,
             research_progress: 0.0,
         }

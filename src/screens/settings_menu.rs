@@ -62,8 +62,7 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     if draw_button_sized(audio_x + 284.0, row_y - 18.0, 28.0, 26.0, "+") {
         settings.music_volume = (settings.music_volume + 0.1).min(1.0);
     }
-    let _row_y = row_y + 50.0;
-
+    row_y += 50.0;
     draw_text("SFX Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
     draw_text(&format!("{:.0}%", settings.sfx_volume * 100.0), audio_x + 200.0, row_y, 14.0, Colors::PRIMARY_SOFT);
     if draw_button_sized(audio_x + 250.0, row_y - 18.0, 28.0, 26.0, "-") {
@@ -72,7 +71,6 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     if draw_button_sized(audio_x + 284.0, row_y - 18.0, 28.0, 26.0, "+") {
         settings.sfx_volume = (settings.sfx_volume + 0.1).min(1.0);
     }
-    row_y += 50.0;
 
     draw_panel(display_x, panel_y, panel_w, panel_h);
     draw_text("Display", display_x + 16.0, panel_y + 28.0, 16.0, Colors::PRIMARY);

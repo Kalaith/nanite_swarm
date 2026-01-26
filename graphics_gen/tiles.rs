@@ -32,6 +32,8 @@ pub fn generate_tiles() {
     save_building("building_wind_turbine", create_wind_turbine());
     save_building("building_server_bank", create_server_bank());
     save_building("building_sweeper", create_sweeper());
+    save_building("building_storage", create_storage());
+    save_building("building_biomass_harvester", create_biomass_harvester());
 }
 
 fn create_ground() -> RgbaImage {
@@ -372,6 +374,35 @@ fn create_sweeper() -> RgbaImage {
     // Sensor dome
     draw_circle(&mut img, 16, 14, 5, Rgba([30, 140, 180, 255]));
     draw_circle(&mut img, 16, 14, 2, Rgba([180, 240, 255, 255]));
+    add_edge_darkening(&mut img, 2, 8);
+    img
+}
+
+fn create_storage() -> RgbaImage {
+    let mut img = create_tile_base(Rgba([40, 45, 55, 255]));
+    add_noise(&mut img, 6, 1919);
+    // Crate stack
+    draw_rect(&mut img, 6, 16, 8, 10, Rgba([110, 90, 60, 255]));
+    draw_rect(&mut img, 16, 14, 10, 12, Rgba([120, 100, 70, 255]));
+    draw_rect(&mut img, 8, 10, 8, 6, Rgba([90, 75, 55, 255]));
+    // Straps
+    draw_rect(&mut img, 6, 20, 8, 1, Rgba([60, 60, 60, 255]));
+    draw_rect(&mut img, 16, 20, 10, 1, Rgba([60, 60, 60, 255]));
+    add_edge_darkening(&mut img, 2, 8);
+    img
+}
+
+fn create_biomass_harvester() -> RgbaImage {
+    let mut img = create_tile_base(Rgba([30, 50, 35, 255]));
+    add_noise(&mut img, 6, 2020);
+    // Bio vats
+    draw_rect(&mut img, 6, 10, 8, 12, Rgba([40, 120, 60, 255]));
+    draw_rect(&mut img, 18, 12, 8, 10, Rgba([40, 120, 60, 255]));
+    // Glow cores
+    draw_circle(&mut img, 10, 16, 3, Rgba([120, 220, 120, 255]));
+    draw_circle(&mut img, 22, 16, 3, Rgba([120, 220, 120, 255]));
+    // Pipes
+    draw_rect(&mut img, 8, 24, 16, 2, Rgba([80, 90, 80, 255]));
     add_edge_darkening(&mut img, 2, 8);
     img
 }

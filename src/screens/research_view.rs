@@ -46,13 +46,6 @@ pub fn render_research_view(
     if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
         return ResearchAction::Close;
     }
-    draw_text(
-        &format!("Data: {:.0}", data_available),
-        screen_w - 150.0,
-        35.0,
-        Dimensions::FONT_SIZE_NORMAL,
-        Colors::PRIMARY,
-    );
 
     let left_panel_x = 16.0;
     let left_panel_y = HEADER_HEIGHT + 12.0;

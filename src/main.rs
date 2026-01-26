@@ -14,6 +14,7 @@ mod directives;
 
 use engine::{ResearchTree, ResearchState};
 use state::{PlanetState, save_to_file, load_from_file};
+use data::load_game_config;
 use assets::GameTextures;
 use screens::{
     render_main_menu, MenuAction,
@@ -48,6 +49,7 @@ pub struct Game {
     directive: Directive,
     directive_timer: f32,
     directive_tier: i32,
+    config: data::GameConfig,
 }
 
 const SAVE_PATH: &str = "save.json";
@@ -56,9 +58,10 @@ const RESEARCH_RATE: f32 = 5.0; // data per second
 impl Game {
     pub async fn new() -> Self {
         let directive = pick_directive(0);
+        let config = load_game_config();
         Self {
             phase: GamePhase::MainMenu,
-            planet_state: PlanetState::default(),
+            planet_state: PlanetState::new("Mars", 24, 24, 42, config.clone()),
             research_tree: ResearchTree::default(),
             research_state: ResearchState::default(),
             settings: Settings::default(),
@@ -69,6 +72,7 @@ impl Game {
             directive,
             directive_timer: 0.0,
             directive_tier: 0,
+            config,
         }
     }
 
@@ -82,8 +86,9 @@ impl Game {
             GamePhase::MainMenu => {
                 match render_main_menu(self.has_save) {
                     MenuAction::NewGame => {
-                        self.planet_state = PlanetState::new("Mars", 24, 24, rand::gen_range(0u64, u64::MAX));
+                        self.planet_state = PlanetState::new("Mars", 24, 24, rand::gen_range(0u64, u64::MAX), self.config.clone());
                         self.research_state = ResearchState::default();
+                        self.sync_research_to_planet();
                         self.sync_building_unlocks();
                         self.phase = GamePhase::Playing;
                     }
@@ -93,6 +98,7 @@ impl Game {
                     MenuAction::Load => {
                         if let Ok(state) = load_from_file(SAVE_PATH) {
                             self.planet_state = state;
+                            self.sync_research_from_planet();
                             self.phase = GamePhase::Playing;
                             self.has_save = true;
                             self.sync_building_unlocks();
@@ -139,6 +145,7 @@ impl Game {
             }
             GamePhase::Research => {
                 let delta = get_frame_time();
+                self.planet_state.update(delta);
                 self.update_research(delta);
                 match render_research_view(
                     &self.research_state,
@@ -178,6 +185,7 @@ impl Game {
                                 planet_names[index],
                                 24, 24,
                                 rand::gen_range(0u64, u64::MAX),
+                                self.config.clone(),
                             );
                             self.phase = GamePhase::Playing;
                         }
@@ -199,6 +207,7 @@ impl Game {
         let Some(current_id) = self.research_state.current_research.clone() else {
             self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
             self.sync_building_unlocks();
+            self.sync_research_to_planet();
             return;
         };
         if self.planet_state.research_lock_timer > 0.0 {
@@ -207,12 +216,16 @@ impl Game {
         let Some(node) = self.research_tree.get_node(&current_id) else {
             self.research_state.current_research = None;
             self.research_state.research_progress = 0.0;
+            self.sync_research_to_planet();
             return;
         };
 
         let remaining = (node.data_cost - self.research_state.research_progress).max(0.0);
         if remaining <= 0.0 {
             self.research_state.complete_research();
+            self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+            self.sync_building_unlocks();
+            self.sync_research_to_planet();
             return;
         }
 
@@ -231,22 +244,40 @@ impl Game {
 
         self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
         self.sync_building_unlocks();
+        self.sync_research_to_planet();
+    }
+
+    fn sync_research_from_planet(&mut self) {
+        self.research_state.unlocked = self.planet_state.research.unlocked_techs.clone();
+        for tech in &data::game_data().research.starting_unlocked {
+            if !self.research_state.unlocked.contains(tech) {
+                self.research_state.unlocked.push(tech.clone());
+            }
+        }
+        self.research_state.current_research = self.planet_state.research.current_research.clone();
+        self.research_state.research_progress = self.planet_state.research.research_progress;
+    }
+
+    fn sync_research_to_planet(&mut self) {
+        self.planet_state.research.unlocked_techs = self.research_state.unlocked.clone();
+        self.planet_state.research.current_research = self.research_state.current_research.clone();
+        self.planet_state.research.research_progress = self.research_state.research_progress;
     }
 
     fn sync_building_unlocks(&mut self) {
-        if self.research_state.is_unlocked("power_grid") {
-            self.planet_state.unlock_building(engine::BuildingType::Conduit);
-            self.planet_state.unlock_building(engine::BuildingType::PowerNode);
-            self.planet_state.unlock_building(engine::BuildingType::Bridge);
-        }
-        if self.research_state.is_unlocked("data_processing") {
-            self.planet_state.unlock_building(engine::BuildingType::ServerBank);
-        }
-        if self.research_state.is_unlocked("wind_power") {
-            self.planet_state.unlock_building(engine::BuildingType::WindTurbine);
-        }
-        if self.research_state.is_unlocked("self_cleaning_servos") {
-            self.planet_state.unlock_building(engine::BuildingType::Sweeper);
+        for def in &data::game_data().buildings {
+            let Some(building_type) = engine::BuildingType::from_id(&def.id) else {
+                continue;
+            };
+            let unlocked = def.start_unlocked
+                || def
+                    .unlocked_by
+                    .as_deref()
+                    .map(|tech| self.research_state.is_unlocked(tech))
+                    .unwrap_or(false);
+            if unlocked {
+                self.planet_state.unlock_building(building_type);
+            }
         }
     }
 

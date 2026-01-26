@@ -1,6 +1,7 @@
 //! Spatial calculations, terrain, buildings, and pathfinding
 
 use serde::{Deserialize, Serialize};
+use crate::data;
 use std::collections::{HashMap, VecDeque};
 
 /// Grid position
@@ -61,53 +62,62 @@ pub enum TerrainType {
 }
 
 impl TerrainType {
-    /// Whether buildings can be placed on this terrain
-    pub fn is_buildable(&self) -> bool {
-        matches!(self, TerrainType::Empty | TerrainType::Rough)
-    }
-
-    /// Whether this terrain can be harvested
-    pub fn is_harvestable(&self) -> bool {
-        matches!(self, TerrainType::Mountain | TerrainType::Forest)
-    }
-
-    /// Get harvest rewards (minerals, biomass)
-    pub fn harvest_rewards(&self) -> (f32, f32) {
+    pub fn id(&self) -> &'static str {
         match self {
-            TerrainType::Mountain => (50.0, 0.0),  // Iron/minerals
-            TerrainType::Forest => (0.0, 30.0),   // Biomass
-            _ => (0.0, 0.0),
+            TerrainType::Empty => "empty",
+            TerrainType::Mountain => "mountain",
+            TerrainType::Forest => "forest",
+            TerrainType::Water => "water",
+            TerrainType::Rough => "rough",
+            TerrainType::Void => "void",
         }
     }
 
-    /// Get terrain after harvesting
-    pub fn harvested(&self) -> TerrainType {
-        match self {
-            TerrainType::Mountain => TerrainType::Rough,
-            TerrainType::Forest => TerrainType::Empty,
-            _ => *self,
-        }
-    }
-
-    /// Get preservation bonus description
-    pub fn preservation_bonus(&self) -> Option<&'static str> {
-        match self {
-            TerrainType::Mountain => Some("+100% Wind Turbine efficiency"),
-            TerrainType::Forest => Some("Pollution buffer (future)"),
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "empty" => Some(TerrainType::Empty),
+            "mountain" => Some(TerrainType::Mountain),
+            "forest" => Some(TerrainType::Forest),
+            "water" => Some(TerrainType::Water),
+            "rough" => Some(TerrainType::Rough),
+            "void" => Some(TerrainType::Void),
             _ => None,
         }
     }
 
+    /// Whether buildings can be placed on this terrain
+    pub fn is_buildable(&self) -> bool {
+        data::game_data().terrain(self.id()).buildable
+    }
+
+    /// Whether this terrain can be harvested
+    pub fn is_harvestable(&self) -> bool {
+        data::game_data().terrain(self.id()).harvestable
+    }
+
+    /// Get harvest rewards (minerals, biomass)
+    pub fn harvest_rewards(&self) -> (f32, f32) {
+        let def = data::game_data().terrain(self.id());
+        (def.harvest_rewards.minerals, def.harvest_rewards.biomass)
+    }
+
+    /// Get terrain after harvesting
+    pub fn harvested(&self) -> TerrainType {
+        let def = data::game_data().terrain(self.id());
+        TerrainType::from_id(&def.harvested_to).unwrap_or(*self)
+    }
+
+    /// Get preservation bonus description
+    pub fn preservation_bonus(&self) -> Option<&'static str> {
+        data::game_data()
+            .terrain(self.id())
+            .preservation_bonus
+            .as_deref()
+    }
+
     /// Display name
     pub fn name(&self) -> &'static str {
-        match self {
-            TerrainType::Empty => "Ground",
-            TerrainType::Mountain => "Mountain",
-            TerrainType::Forest => "Forest",
-            TerrainType::Water => "Water",
-            TerrainType::Rough => "Rough Ground",
-            TerrainType::Void => "Void",
-        }
+        data::game_data().terrain(self.id()).name.as_str()
     }
 }
 
@@ -128,76 +138,71 @@ pub enum BuildingType {
     WindTurbine, // Generates power (bonus on mountains)
     ServerBank, // Generates data, consumes power
     Sweeper,    // Cleans dust buildup in nearby buildings
+    Storage,    // Increases mineral storage capacity
+    BiomassHarvester, // Consumes forest biomass for power
 }
 
 impl BuildingType {
+    pub fn id(&self) -> &'static str {
+        match self {
+            BuildingType::Core => "core",
+            BuildingType::Drill => "drill",
+            BuildingType::Conduit => "conduit",
+            BuildingType::Bridge => "bridge",
+            BuildingType::PowerNode => "power_node",
+            BuildingType::WindTurbine => "wind_turbine",
+            BuildingType::ServerBank => "server_bank",
+            BuildingType::Sweeper => "sweeper",
+            BuildingType::Storage => "storage",
+            BuildingType::BiomassHarvester => "biomass_harvester",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "core" => Some(BuildingType::Core),
+            "drill" => Some(BuildingType::Drill),
+            "conduit" => Some(BuildingType::Conduit),
+            "bridge" => Some(BuildingType::Bridge),
+            "power_node" => Some(BuildingType::PowerNode),
+            "wind_turbine" => Some(BuildingType::WindTurbine),
+            "server_bank" => Some(BuildingType::ServerBank),
+            "sweeper" => Some(BuildingType::Sweeper),
+            "storage" => Some(BuildingType::Storage),
+            "biomass_harvester" => Some(BuildingType::BiomassHarvester),
+            _ => None,
+        }
+    }
+
+    fn def(&self) -> &'static data::BuildingDef {
+        data::game_data().building(self.id())
+    }
+
     /// Resource cost to build
     pub fn cost(&self) -> (f32, f32) {
-        // Returns (minerals, energy)
-        match self {
-            BuildingType::Core => (0.0, 0.0),        // Free (starting building)
-            BuildingType::Drill => (20.0, 10.0),
-            BuildingType::Conduit => (5.0, 2.0),
-            BuildingType::Bridge => (15.0, 5.0),
-            BuildingType::PowerNode => (15.0, 5.0),
-            BuildingType::WindTurbine => (25.0, 15.0),
-            BuildingType::ServerBank => (40.0, 30.0),
-            BuildingType::Sweeper => (12.0, 6.0),
-        }
+        let def = self.def();
+        (def.cost.minerals, def.cost.energy)
     }
 
     /// Display name for UI
     pub fn name(&self) -> &'static str {
-        match self {
-            BuildingType::Core => "Core",
-            BuildingType::Drill => "Drill",
-            BuildingType::Conduit => "Conduit",
-            BuildingType::Bridge => "Bridge",
-            BuildingType::PowerNode => "Power Node",
-            BuildingType::WindTurbine => "Wind Turbine",
-            BuildingType::ServerBank => "Server Bank",
-            BuildingType::Sweeper => "Sweeper",
-        }
+        self.def().name.as_str()
     }
 
     /// Keyboard shortcut for quick selection
     pub fn hotkey(&self) -> Option<char> {
-        match self {
-            BuildingType::Drill => Some('1'),
-            BuildingType::Conduit => Some('2'),
-            BuildingType::Bridge => Some('6'),
-            BuildingType::PowerNode => Some('3'),
-            BuildingType::WindTurbine => Some('4'),
-            BuildingType::ServerBank => Some('5'),
-            BuildingType::Sweeper => Some('7'),
-            BuildingType::Core => None,
-        }
+        self.def().hotkey.as_ref().and_then(|key| key.chars().next())
     }
 
     /// Short description for UI
     pub fn description(&self) -> &'static str {
-        match self {
-            BuildingType::Core => "Central AI hub. Powers nearby grid and receives resources.",
-            BuildingType::Drill => "Extracts minerals and spawns drones to deliver them.",
-            BuildingType::Conduit => "Transmits power and connects buildings.",
-            BuildingType::Bridge => "Allows conduit crossings on the same tile.",
-            BuildingType::PowerNode => "Repeater that extends power range.",
-            BuildingType::WindTurbine => "Generates power. Bonus on mountains.",
-            BuildingType::ServerBank => "Consumes power to generate research data.",
-            BuildingType::Sweeper => "Clears dust from nearby buildings.",
-        }
+        self.def().description.as_str()
     }
 
     /// Net power per second (positive = generation, negative = consumption)
     pub fn power_delta(&self) -> f32 {
-        match self {
-            BuildingType::Core => 10.0,
-            BuildingType::WindTurbine => 5.0,
-            BuildingType::Drill => -2.0,
-            BuildingType::ServerBank => -5.0,
-            BuildingType::Sweeper => -1.0,
-            _ => 0.0,
-        }
+        let def = self.def();
+        def.power_generation - def.power_consumption
     }
 
 }
@@ -229,26 +234,23 @@ impl Building {
 
     /// Check if this building transmits power
     pub fn transmits_power(&self) -> bool {
-        matches!(
-            self.building_type,
-            BuildingType::Core | BuildingType::Conduit | BuildingType::PowerNode
-        )
+        data::game_data()
+            .building(self.building_type.id())
+            .transmits_power
     }
 
     /// Check if this building generates power
     pub fn generates_power(&self) -> bool {
-        matches!(
-            self.building_type,
-            BuildingType::Core | BuildingType::WindTurbine
-        )
+        data::game_data()
+            .building(self.building_type.id())
+            .generates_power
     }
 
     /// Check if this building consumes power
     pub fn consumes_power(&self) -> bool {
-        matches!(
-            self.building_type,
-            BuildingType::Drill | BuildingType::ServerBank
-        )
+        data::game_data()
+            .building(self.building_type.id())
+            .consumes_power
     }
 
     pub fn dust_efficiency(&self) -> f32 {
@@ -316,6 +318,8 @@ pub struct Tile {
     pub mountain_harvested: bool, // Permanent scar for turbine bonuses
     #[serde(default)]
     pub forest_cleared: bool, // Permanent pollution penalty
+    #[serde(default)]
+    pub biomass_amount: f32,
 }
 
 impl Default for Tile {
@@ -328,6 +332,7 @@ impl Default for Tile {
             filter: false,
             mountain_harvested: false,
             forest_cleared: false,
+            biomass_amount: 0.0,
         }
     }
 }
@@ -397,6 +402,7 @@ impl Grid {
                 filter: false,
                 mountain_harvested: false,
                 forest_cleared: false,
+                biomass_amount: 0.0,
             });
         }
 
@@ -445,6 +451,9 @@ impl Grid {
             }
             if building_type == BuildingType::Bridge {
                 return matches!(tile.terrain, TerrainType::Water | TerrainType::Void) && !tile.bridge;
+            }
+            if building_type == BuildingType::BiomassHarvester {
+                return tile.terrain == TerrainType::Forest && !tile.filter;
             }
             // Special case: Wind turbines can go on mountains
             if building_type == BuildingType::WindTurbine {
@@ -550,6 +559,14 @@ impl Grid {
             .iter_mut()
             .enumerate()
             .map(move |(i, tile)| (GridPos::from_index(i, width), tile))
+    }
+
+    pub fn initialize_forest_biomass(&mut self, amount: f32) {
+        for (_, tile) in self.iter_tiles_mut() {
+            if tile.terrain == TerrainType::Forest {
+                tile.biomass_amount = amount;
+            }
+        }
     }
 
 
@@ -742,12 +759,15 @@ impl Grid {
     pub fn total_power_generation(&self) -> f32 {
         self.tiles
             .iter()
-            .filter_map(|tile| tile.building.as_ref())
-            .filter(|b| b.powered && b.generates_power())
-            .map(|b| match b.building_type {
-                BuildingType::Core => 10.0 * b.dust_power_generation_multiplier(),
-                BuildingType::WindTurbine => 5.0 * b.efficiency * b.dust_power_generation_multiplier(),
-                _ => 0.0,
+            .filter_map(|tile| tile.building.as_ref().map(|b| (tile, b)))
+            .filter(|(_, b)| b.powered && b.generates_power())
+            .map(|(_tile, b)| {
+                let def = data::game_data().building(b.building_type.id());
+                let mut generation = def.power_generation;
+                if def.uses_efficiency {
+                    generation *= b.efficiency;
+                }
+                generation * b.dust_power_generation_multiplier()
             })
             .sum()
     }
@@ -759,12 +779,8 @@ impl Grid {
             .filter_map(|tile| tile.building.as_ref())
             .filter(|b| b.powered)
             .map(|b| {
-                let base = match b.building_type {
-                    BuildingType::Drill => 2.0,
-                    BuildingType::ServerBank => 5.0,
-                    BuildingType::Sweeper => 1.0,
-                    _ => 0.0,
-                };
+                let def = data::game_data().building(b.building_type.id());
+                let base = def.power_consumption;
                 let leak = b.dust_power_leak();
                 (base * b.dust_power_consumption_multiplier()) + leak
             })

@@ -1,0 +1,125 @@
+{
+  "starting_unlocked": ["core", "basic_mining"],
+  "nodes": [
+    {
+      "id": "core",
+      "name": "AI Core",
+      "description": "Central processing unit",
+      "data_cost": 0.0,
+      "prerequisites": [],
+      "position": [0.0, 0.0]
+    },
+    {
+      "id": "basic_mining",
+      "name": "Basic Mining",
+      "description": "Enables drill construction",
+      "data_cost": 0.0,
+      "prerequisites": ["core"],
+      "position": [-1.5, -1.0]
+    },
+    {
+      "id": "power_grid",
+      "name": "Power Grid",
+      "description": "Enables conduits, power nodes, and bridges",
+      "data_cost": 10.0,
+      "prerequisites": ["core"],
+      "position": [1.5, -1.0]
+    },
+    {
+      "id": "data_processing",
+      "name": "Data Processing",
+      "description": "Enables server banks for Data generation",
+      "data_cost": 15.0,
+      "prerequisites": ["core"],
+      "position": [0.0, -1.5]
+    },
+    {
+      "id": "efficient_drills",
+      "name": "Efficient Drills",
+      "description": "+50% drill output",
+      "data_cost": 25.0,
+      "prerequisites": ["basic_mining"],
+      "position": [-2.0, -2.0]
+    },
+    {
+      "id": "drone_capacity",
+      "name": "Drone Capacity",
+      "description": "+100% drone carry capacity",
+      "data_cost": 30.0,
+      "prerequisites": ["basic_mining"],
+      "position": [-1.0, -2.0]
+    },
+    {
+      "id": "wind_power",
+      "name": "Wind Power",
+      "description": "Enables wind turbines",
+      "data_cost": 20.0,
+      "prerequisites": ["power_grid"],
+      "position": [2.0, -2.0]
+    },
+    {
+      "id": "power_efficiency",
+      "name": "Power Efficiency",
+      "description": "-25% power consumption",
+      "data_cost": 35.0,
+      "prerequisites": ["power_grid"],
+      "position": [1.0, -2.0]
+    },
+    {
+      "id": "self_cleaning_servos",
+      "name": "Self-Cleaning Servos",
+      "description": "-40% dust accumulation and unlocks Sweepers",
+      "data_cost": 30.0,
+      "prerequisites": ["data_processing"],
+      "position": [2.5, -2.0]
+    },
+    {
+      "id": "storage_systems",
+      "name": "Storage Systems",
+      "description": "Unlocks Mineral Storage buildings",
+      "data_cost": 10.0,
+      "prerequisites": ["basic_mining"],
+      "position": [-2.5, -1.0]
+    },
+    {
+      "id": "storage_optimization",
+      "name": "Storage Optimization",
+      "description": "+50 mineral capacity",
+      "data_cost": 20.0,
+      "prerequisites": ["storage_systems"],
+      "position": [-3.2, -1.5]
+    },
+    {
+      "id": "biomass_fuel",
+      "name": "Biomass Fuel",
+      "description": "Unlocks Biomass Harvesters",
+      "data_cost": 12.0,
+      "prerequisites": ["basic_mining"],
+      "position": [-1.0, -0.5]
+    },
+    {
+      "id": "advanced_research",
+      "name": "Advanced Research",
+      "description": "+50% data generation",
+      "data_cost": 40.0,
+      "prerequisites": ["data_processing"],
+      "position": [0.0, -2.5]
+    },
+    {
+      "id": "mass_driver",
+      "name": "Mass Driver",
+      "description": "Enables interplanetary transport",
+      "data_cost": 100.0,
+      "prerequisites": ["efficient_drills", "power_efficiency"],
+      "position": [0.0, -3.5]
+    },
+    {
+      "id": "neural_expansion",
+      "name": "Neural Expansion",
+      "description": "Unlocks advanced AI capabilities",
+      "data_cost": 150.0,
+      "prerequisites": ["advanced_research", "mass_driver"],
+      "position": [0.0, -4.5]
+    }
+  ]
+}
