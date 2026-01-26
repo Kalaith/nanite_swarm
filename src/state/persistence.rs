@@ -2,15 +2,12 @@
 
 use super::PlanetState;
 use serde_json;
-use std::time::{SystemTime, UNIX_EPOCH};
+use macroquad::miniquad;
 use std::io;
 use std::fs;
 
 fn unix_seconds_now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+    (miniquad::date::now() as i64).max(0)
 }
 
 /// Serialize game state to JSON string

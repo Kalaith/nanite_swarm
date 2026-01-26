@@ -2,7 +2,10 @@
 
 use serde::Deserialize;
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(target_arch = "wasm32")]
+use macroquad::prelude::*;
 
 use crate::engine::{ResearchNode, ResearchTree};
 use crate::data::load_json;
@@ -23,7 +26,8 @@ pub struct BuildingDef {
     pub power_consumption: f32,
     pub hotkey: Option<String>,
     pub texture: String,
-    pub icon: String,
+    #[serde(default)]
+    pub icon: Option<String>,
     pub build_menu_order: i32,
     pub show_in_build_menu: bool,
     pub start_unlocked: bool,
@@ -102,14 +106,28 @@ pub struct GameData {
 }
 
 impl GameData {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load() -> Self {
         let buildings_json = fs::read_to_string("assets/buildings.json").unwrap_or_default();
         let terrain_json = fs::read_to_string("assets/terrain.json").unwrap_or_default();
         let research_json = fs::read_to_string("assets/research.json").unwrap_or_default();
 
-        let building_file: BuildingDataFile = load_json(&buildings_json).unwrap_or_else(|_| BuildingDataFile { buildings: vec![] });
-        let terrain_file: TerrainDataFile = load_json(&terrain_json).unwrap_or_else(|_| TerrainDataFile { terrain: vec![] });
-        let research: ResearchData = load_json(&research_json).unwrap_or_else(|_| ResearchData {
+        Self::from_json_strings(&buildings_json, &terrain_json, &research_json)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn load_async() -> Self {
+        let buildings_json = load_string("assets/buildings.json").await.unwrap_or_default();
+        let terrain_json = load_string("assets/terrain.json").await.unwrap_or_default();
+        let research_json = load_string("assets/research.json").await.unwrap_or_default();
+
+        Self::from_json_strings(&buildings_json, &terrain_json, &research_json)
+    }
+
+    fn from_json_strings(buildings_json: &str, terrain_json: &str, research_json: &str) -> Self {
+        let building_file: BuildingDataFile = load_json(buildings_json).unwrap_or_else(|_| BuildingDataFile { buildings: vec![] });
+        let terrain_file: TerrainDataFile = load_json(terrain_json).unwrap_or_else(|_| TerrainDataFile { terrain: vec![] });
+        let research: ResearchData = load_json(research_json).unwrap_or_else(|_| ResearchData {
             starting_unlocked: vec!["core".to_string(), "basic_mining".to_string()],
             nodes: vec![],
         });

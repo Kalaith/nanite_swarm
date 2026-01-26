@@ -5,7 +5,7 @@ use macroquad::prelude::Color;
 use macroquad::rand::gen_range;
 use crate::engine::{Grid, GridPos, BuildingType, DroneManager, find_path, DroneState, TerrainType};
 use crate::data::GameConfig;
-use std::time::{SystemTime, UNIX_EPOCH};
+use macroquad::miniquad;
 
 const DUST_RATE: f32 = 0.12; // dust per second
 const SWEEPER_RATE: f32 = 0.6; // dust cleared per second
@@ -17,10 +17,7 @@ const POLLUTION_RATE_MULTIPLIER: f32 = 1.3;
 // Config-driven values are loaded from assets/game_config.json.
 
 fn unix_seconds_now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
+    (miniquad::date::now() as i64).max(0)
 }
 
 /// Simple particle for visual effects

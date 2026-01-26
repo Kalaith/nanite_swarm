@@ -14,7 +14,7 @@ mod directives;
 
 use engine::{ResearchTree, ResearchState};
 use state::{PlanetState, save_to_file, load_from_file};
-use data::load_game_config;
+use data::{load_game_config, load_game_data, set_game_data};
 use assets::GameTextures;
 use screens::{
     render_main_menu, MenuAction,
@@ -57,8 +57,18 @@ const RESEARCH_RATE: f32 = 5.0; // data per second
 
 impl Game {
     pub async fn new() -> Self {
-        let directive = pick_directive(0);
+        #[cfg(not(target_arch = "wasm32"))]
         let config = load_game_config();
+        #[cfg(target_arch = "wasm32")]
+        let config = load_game_config().await;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let game_data = load_game_data();
+        #[cfg(target_arch = "wasm32")]
+        let game_data = load_game_data().await;
+
+        set_game_data(game_data);
+        let directive = pick_directive(0);
         Self {
             phase: GamePhase::MainMenu,
             planet_state: PlanetState::new("Mars", 24, 24, 42, config.clone()),
@@ -86,7 +96,7 @@ impl Game {
             GamePhase::MainMenu => {
                 match render_main_menu(self.has_save) {
                     MenuAction::NewGame => {
-                        self.planet_state = PlanetState::new("Mars", 24, 24, rand::gen_range(0u64, u64::MAX), self.config.clone());
+                        self.planet_state = PlanetState::new("Mars", 24, 24, macroquad::rand::gen_range(0u64, u64::MAX), self.config.clone());
                         self.research_state = ResearchState::default();
                         self.sync_research_to_planet();
                         self.sync_building_unlocks();
@@ -184,7 +194,7 @@ impl Game {
                             self.planet_state = PlanetState::new(
                                 planet_names[index],
                                 24, 24,
-                                rand::gen_range(0u64, u64::MAX),
+                                macroquad::rand::gen_range(0u64, u64::MAX),
                                 self.config.clone(),
                             );
                             self.phase = GamePhase::Playing;
@@ -301,6 +311,7 @@ fn window_conf() -> Conf {
         window_width: 1280,
         window_height: 720,
         window_resizable: true,
+        high_dpi: true,
         ..Default::default()
     }
 }

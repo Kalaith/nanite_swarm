@@ -55,7 +55,14 @@ impl GameTextures {
 
         let mut building_icon_textures = HashMap::new();
         for def in &data::game_data().buildings {
-            let texture = load_texture(&def.icon).await.expect("building_icon");
+            let icon_path = def.icon.as_deref().unwrap_or(&def.texture);
+            let texture = match load_texture(icon_path).await {
+                Ok(texture) => texture,
+                Err(_) => {
+                    println!("Icon missing for {}. Falling back to tile texture.", def.id);
+                    building_textures.get(&def.id).expect("building_icon_fallback").clone()
+                }
+            };
             building_icon_textures.insert(def.id.clone(), texture);
         }
 

@@ -359,10 +359,7 @@ impl Grid {
 
     /// Create a grid with procedural terrain
     pub fn new_with_terrain(width: u32, height: u32, seed: u64) -> Self {
-        use rand::{Rng, SeedableRng};
-        use rand::rngs::StdRng;
-
-        let mut rng = StdRng::seed_from_u64(seed);
+        let mut rng = TerrainRng::new(seed);
         let size = (width * height) as usize;
         let mut tiles = Vec::with_capacity(size);
 
@@ -377,7 +374,7 @@ impl Grid {
             let terrain = if dist_from_center <= 2 {
                 TerrainType::Empty // Clear area around Core
             } else {
-                let roll: f32 = rng.gen();
+                let roll: f32 = rng.next_f32();
                 if roll < 0.6 {
                     TerrainType::Empty
                 } else if roll < 0.75 {
@@ -790,5 +787,30 @@ impl Grid {
     /// Calculate net power (generation - consumption)
     pub fn net_power(&self) -> f32 {
         self.total_power_generation() - self.total_power_consumption()
+    }
+}
+
+struct TerrainRng {
+    state: u64,
+}
+
+impl TerrainRng {
+    fn new(seed: u64) -> Self {
+        let init = seed ^ 0x9E3779B97F4A7C15;
+        Self { state: init }
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.state;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.state = x;
+        x.wrapping_mul(0x2545F4914F6CDD1D)
+    }
+
+    fn next_f32(&mut self) -> f32 {
+        let value = self.next_u64() >> 40;
+        (value as f32) / ((1u64 << 24) as f32)
     }
 }

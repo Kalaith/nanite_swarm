@@ -128,7 +128,11 @@ if ($buildWebGL) {
     $AssetsPath = Join-Path $ProjectRoot "assets"
     if (Test-Path $AssetsPath) { Copy-Item $AssetsPath -Destination $WebGLPackageDir -Recurse }
     $JsBundlePath = Join-Path $WebGLPackageDir "mq_js_bundle.js"
-    try { Invoke-WebRequest -Uri "https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js" -OutFile $JsBundlePath } catch { Write-Warning "Could not download mq_js_bundle.js" }
+    try {
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/not-fl3/macroquad/master/js/mq_js_bundle.js" -OutFile $JsBundlePath
+    } catch {
+        Write-Warning "Could not download mq_js_bundle.js"
+    }
     $WebGLZipPath = Join-Path $DistDir "${ProjectName}_webgl.zip"
     Compress-Archive -Path "$WebGLPackageDir\*" -DestinationPath $WebGLZipPath -CompressionLevel Optimal
     Write-Host "WebGL package created!" -ForegroundColor Green
