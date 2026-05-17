@@ -93,7 +93,7 @@ if ($buildWindows) {
     if (-not (Test-Path $ExePath)) { Write-Error "Executable not found: $ExePath"; exit 1 }
     Copy-Item $ExePath $WindowsPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
-    if (Test-Path $AssetsPath) { Copy-Item $AssetsPath -Destination $WindowsPackageDir -Recurse }
+    if (Test-Path $AssetsPath) { $destAssets = Join-Path $WindowsPackageDir "assets"; if (Test-Path $destAssets) { Remove-Item $destAssets -Recurse -Force }; Copy-Item $AssetsPath -Destination $WindowsPackageDir -Recurse -Force }
     $WindowsZipPath = Join-Path $DistDir "${ProjectName}_windows.zip"
     Compress-Archive -Path "$WindowsPackageDir\*" -DestinationPath $WindowsZipPath -CompressionLevel Optimal
     Write-Host "Windows package created!" -ForegroundColor Green
@@ -115,7 +115,7 @@ if ($buildWebGL) {
             Write-Host "Optimizing WASM with wasm-opt -Oz..." -ForegroundColor Yellow
             wasm-opt -Oz -o $WasmPath $WasmPath
         } else {
-            Write-Host "wasm-opt not found; skipping extra WASM optimization" -ForegroundColor Gray
+            Write-Host "Skipping optional WASM optimization" -ForegroundColor Gray
         }
     } else {
         Write-Host "[$currentStep/$totalSteps] Skipping WebGL build" -ForegroundColor Gray
@@ -129,7 +129,7 @@ if ($buildWebGL) {
     if (-not (Test-Path $WasmPath)) { Write-Error "WASM not found: $WasmPath"; exit 1 }
     Copy-Item $WasmPath $WebGLPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
-    if (Test-Path $AssetsPath) { Copy-Item $AssetsPath -Destination $WebGLPackageDir -Recurse }
+    if (Test-Path $AssetsPath) { $destAssets = Join-Path $WebGLPackageDir "assets"; if (Test-Path $destAssets) { Remove-Item $destAssets -Recurse -Force }; Copy-Item $AssetsPath -Destination $WebGLPackageDir -Recurse -Force }
     $JsBundlePath = Join-Path $WebGLPackageDir "mq_js_bundle.js"
     try {
         Invoke-WebRequest -Uri "https://raw.githubusercontent.com/not-fl3/macroquad/master/js/mq_js_bundle.js" -OutFile $JsBundlePath
