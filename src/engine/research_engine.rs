@@ -10,11 +10,18 @@ pub struct ResearchNode {
     pub description: String,
     pub data_cost: f32,
     pub prerequisites: Vec<String>,
-    pub position: (f32, f32),  // Visual position in neural network
+    pub position: (f32, f32), // Visual position in neural network
 }
 
 impl ResearchNode {
-    pub fn new(id: &str, name: &str, description: &str, cost: f32, prereqs: Vec<&str>, pos: (f32, f32)) -> Self {
+    pub fn new(
+        id: &str,
+        name: &str,
+        description: &str,
+        cost: f32,
+        prereqs: Vec<&str>,
+        pos: (f32, f32),
+    ) -> Self {
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -85,7 +92,11 @@ impl ResearchTree {
     }
 
     /// Get all nodes that are available for research
-    pub fn available_research(&self, unlocked: &[String], available_data: f32) -> Vec<&ResearchNode> {
+    pub fn available_research(
+        &self,
+        unlocked: &[String],
+        available_data: f32,
+    ) -> Vec<&ResearchNode> {
         self.nodes
             .iter()
             .filter(|n| self.can_research(&n.id, unlocked, available_data))
@@ -126,7 +137,12 @@ impl Default for ResearchState {
 
 impl ResearchState {
     /// Start researching a tech
-    pub fn start_research(&mut self, tech_id: &str, tree: &ResearchTree, _available_data: f32) -> bool {
+    pub fn start_research(
+        &mut self,
+        tech_id: &str,
+        tree: &ResearchTree,
+        _available_data: f32,
+    ) -> bool {
         if tree.can_select(tech_id, &self.unlocked) {
             self.current_research = Some(tech_id.to_string());
             self.research_progress = 0.0;

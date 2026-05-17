@@ -1,7 +1,7 @@
 //! Settings menu screen
 
+use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
-use crate::ui::{Colors, Dimensions, draw_button_sized, draw_panel};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SettingsAction {
@@ -51,11 +51,23 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     let display_x = screen_w * 0.5 + 20.0;
 
     draw_panel(audio_x, panel_y, panel_w, panel_h);
-    draw_text("Audio", audio_x + 16.0, panel_y + 28.0, 16.0, Colors::PRIMARY);
+    draw_text(
+        "Audio",
+        audio_x + 16.0,
+        panel_y + 28.0,
+        16.0,
+        Colors::PRIMARY,
+    );
 
     let mut row_y = panel_y + 70.0;
     draw_text("Music Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_text(&format!("{:.0}%", settings.music_volume * 100.0), audio_x + 200.0, row_y, 14.0, Colors::PRIMARY_SOFT);
+    draw_text(
+        &format!("{:.0}%", settings.music_volume * 100.0),
+        audio_x + 200.0,
+        row_y,
+        14.0,
+        Colors::PRIMARY_SOFT,
+    );
     if draw_button_sized(audio_x + 250.0, row_y - 18.0, 28.0, 26.0, "-") {
         settings.music_volume = (settings.music_volume - 0.1).max(0.0);
     }
@@ -64,7 +76,13 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     }
     row_y += 50.0;
     draw_text("SFX Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_text(&format!("{:.0}%", settings.sfx_volume * 100.0), audio_x + 200.0, row_y, 14.0, Colors::PRIMARY_SOFT);
+    draw_text(
+        &format!("{:.0}%", settings.sfx_volume * 100.0),
+        audio_x + 200.0,
+        row_y,
+        14.0,
+        Colors::PRIMARY_SOFT,
+    );
     if draw_button_sized(audio_x + 250.0, row_y - 18.0, 28.0, 26.0, "-") {
         settings.sfx_volume = (settings.sfx_volume - 0.1).max(0.0);
     }
@@ -73,11 +91,29 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     }
 
     draw_panel(display_x, panel_y, panel_w, panel_h);
-    draw_text("Display", display_x + 16.0, panel_y + 28.0, 16.0, Colors::PRIMARY);
+    draw_text(
+        "Display",
+        display_x + 16.0,
+        panel_y + 28.0,
+        16.0,
+        Colors::PRIMARY,
+    );
 
     let mut display_row_y = panel_y + 70.0;
-    draw_text("UI Scale", display_x + 16.0, display_row_y, 14.0, Colors::TEXT);
-    draw_text(&format!("{:.2}x", settings.ui_scale), display_x + 200.0, display_row_y, 14.0, Colors::PRIMARY_SOFT);
+    draw_text(
+        "UI Scale",
+        display_x + 16.0,
+        display_row_y,
+        14.0,
+        Colors::TEXT,
+    );
+    draw_text(
+        &format!("{:.2}x", settings.ui_scale),
+        display_x + 200.0,
+        display_row_y,
+        14.0,
+        Colors::PRIMARY_SOFT,
+    );
     if draw_button_sized(display_x + 250.0, display_row_y - 18.0, 28.0, 26.0, "-") {
         settings.ui_scale = (settings.ui_scale - 0.05).max(0.75);
     }
@@ -86,8 +122,18 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     }
     display_row_y += 50.0;
 
-    let toggle_text = if settings.show_fps { "Show FPS: On" } else { "Show FPS: Off" };
-    if draw_button_sized(display_x + 16.0, display_row_y - 16.0, 200.0, 30.0, toggle_text) {
+    let toggle_text = if settings.show_fps {
+        "Show FPS: On"
+    } else {
+        "Show FPS: Off"
+    };
+    if draw_button_sized(
+        display_x + 16.0,
+        display_row_y - 16.0,
+        200.0,
+        30.0,
+        toggle_text,
+    ) {
         settings.show_fps = !settings.show_fps;
     }
 

@@ -1,8 +1,8 @@
 //! Short-term directives for pacing and rewards.
 
-use serde::{Deserialize, Serialize};
-use crate::state::PlanetState;
 use crate::engine::BuildingType;
+use crate::state::PlanetState;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DirectiveKind {
@@ -75,9 +75,29 @@ impl Directive {
 
 pub fn pick_directive(tier: i32) -> Directive {
     match tier % 4 {
-        0 => Directive::new(DirectiveKind::PowerSurplus, 20 + tier * 5, 600.0, 20.0 + tier as f32 * 5.0),
-        1 => Directive::new(DirectiveKind::DrillCount, 3 + tier, 600.0, 15.0 + tier as f32 * 4.0),
-        2 => Directive::new(DirectiveKind::ServerBanks, 2 + tier / 2, 600.0, 20.0 + tier as f32 * 5.0),
-        _ => Directive::new(DirectiveKind::HarvestForest, 2 + tier / 2, 600.0, 10.0 + tier as f32 * 3.0),
+        0 => Directive::new(
+            DirectiveKind::PowerSurplus,
+            20 + tier * 5,
+            600.0,
+            20.0 + tier as f32 * 5.0,
+        ),
+        1 => Directive::new(
+            DirectiveKind::DrillCount,
+            3 + tier,
+            600.0,
+            15.0 + tier as f32 * 4.0,
+        ),
+        2 => Directive::new(
+            DirectiveKind::ServerBanks,
+            2 + tier / 2,
+            600.0,
+            20.0 + tier as f32 * 5.0,
+        ),
+        _ => Directive::new(
+            DirectiveKind::HarvestForest,
+            2 + tier / 2,
+            600.0,
+            10.0 + tier as f32 * 3.0,
+        ),
     }
 }

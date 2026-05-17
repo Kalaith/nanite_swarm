@@ -1,8 +1,8 @@
 //! Tile generation for Nanite Swarm (2D)
 
-use image::{Rgba, RgbaImage};
-use image::imageops::FilterType;
 use super::utils::*;
+use image::imageops::FilterType;
+use image::{Rgba, RgbaImage};
 
 const ICON_WIDTH: u32 = 48;
 const ICON_HEIGHT: u32 = 48;
@@ -20,17 +20,50 @@ pub fn generate_tiles() {
     save_building_with_icon("building_core_stage_2a", create_core_stage_2a());
     save_building_with_icon("building_core_stage_2b", create_core_stage_2b());
     save_building_with_icon("building_drill", create_drill());
-    save_building_with_icon("building_conduit_straight_h", create_conduit_variant(ConduitVariant::StraightH));
-    save_building_with_icon("building_conduit_straight_v", create_conduit_variant(ConduitVariant::StraightV));
-    save_building_with_icon("building_conduit_corner_ne", create_conduit_variant(ConduitVariant::CornerNE));
-    save_building_with_icon("building_conduit_corner_nw", create_conduit_variant(ConduitVariant::CornerNW));
-    save_building_with_icon("building_conduit_corner_se", create_conduit_variant(ConduitVariant::CornerSE));
-    save_building_with_icon("building_conduit_corner_sw", create_conduit_variant(ConduitVariant::CornerSW));
-    save_building_with_icon("building_conduit_tee_n", create_conduit_variant(ConduitVariant::TeeN));
-    save_building_with_icon("building_conduit_tee_e", create_conduit_variant(ConduitVariant::TeeE));
-    save_building_with_icon("building_conduit_tee_s", create_conduit_variant(ConduitVariant::TeeS));
-    save_building_with_icon("building_conduit_tee_w", create_conduit_variant(ConduitVariant::TeeW));
-    save_building_with_icon("building_conduit_cross", create_conduit_variant(ConduitVariant::Cross));
+    save_building_with_icon(
+        "building_conduit_straight_h",
+        create_conduit_variant(ConduitVariant::StraightH),
+    );
+    save_building_with_icon(
+        "building_conduit_straight_v",
+        create_conduit_variant(ConduitVariant::StraightV),
+    );
+    save_building_with_icon(
+        "building_conduit_corner_ne",
+        create_conduit_variant(ConduitVariant::CornerNE),
+    );
+    save_building_with_icon(
+        "building_conduit_corner_nw",
+        create_conduit_variant(ConduitVariant::CornerNW),
+    );
+    save_building_with_icon(
+        "building_conduit_corner_se",
+        create_conduit_variant(ConduitVariant::CornerSE),
+    );
+    save_building_with_icon(
+        "building_conduit_corner_sw",
+        create_conduit_variant(ConduitVariant::CornerSW),
+    );
+    save_building_with_icon(
+        "building_conduit_tee_n",
+        create_conduit_variant(ConduitVariant::TeeN),
+    );
+    save_building_with_icon(
+        "building_conduit_tee_e",
+        create_conduit_variant(ConduitVariant::TeeE),
+    );
+    save_building_with_icon(
+        "building_conduit_tee_s",
+        create_conduit_variant(ConduitVariant::TeeS),
+    );
+    save_building_with_icon(
+        "building_conduit_tee_w",
+        create_conduit_variant(ConduitVariant::TeeW),
+    );
+    save_building_with_icon(
+        "building_conduit_cross",
+        create_conduit_variant(ConduitVariant::Cross),
+    );
     save_building_with_icon("building_bridge", create_bridge());
     save_building_with_icon("building_power_node", create_power_node());
     save_building_with_icon("building_wind_turbine", create_wind_turbine());
@@ -73,7 +106,16 @@ fn create_mountain() -> RgbaImage {
         for x in 0..TILE_WIDTH {
             if x + y < 18 {
                 let p = *img.get_pixel(x, y);
-                img.put_pixel(x, y, Rgba([p[0].saturating_add(15), p[1].saturating_add(15), p[2].saturating_add(18), 255]));
+                img.put_pixel(
+                    x,
+                    y,
+                    Rgba([
+                        p[0].saturating_add(15),
+                        p[1].saturating_add(15),
+                        p[2].saturating_add(18),
+                        255,
+                    ]),
+                );
             }
         }
     }
@@ -295,32 +337,112 @@ fn create_conduit_variant(variant: ConduitVariant) -> RgbaImage {
     for arm in arms {
         match arm {
             "N" => {
-                draw_rect(&mut img, center_u.0 - thickness_u / 2, 2, thickness_u, center_u.1 - 2, Rgba([20, 120, 160, 255]));
-                draw_rect(&mut img, center_u.0 - thickness_u / 2, 3, thickness_u, center_u.1 - 4, Rgba([60, 200, 230, 255]));
+                draw_rect(
+                    &mut img,
+                    center_u.0 - thickness_u / 2,
+                    2,
+                    thickness_u,
+                    center_u.1 - 2,
+                    Rgba([20, 120, 160, 255]),
+                );
+                draw_rect(
+                    &mut img,
+                    center_u.0 - thickness_u / 2,
+                    3,
+                    thickness_u,
+                    center_u.1 - 4,
+                    Rgba([60, 200, 230, 255]),
+                );
                 draw_circle(&mut img, center_i.0, 4, 2, Rgba([150, 230, 240, 255]));
             }
             "S" => {
-                draw_rect(&mut img, center_u.0 - thickness_u / 2, center_u.1, thickness_u, TILE_HEIGHT - center_u.1 - 2, Rgba([20, 120, 160, 255]));
-                draw_rect(&mut img, center_u.0 - thickness_u / 2, center_u.1 + 1, thickness_u, TILE_HEIGHT - center_u.1 - 4, Rgba([60, 200, 230, 255]));
-                draw_circle(&mut img, center_i.0, (TILE_HEIGHT - 4) as i32, 2, Rgba([150, 230, 240, 255]));
+                draw_rect(
+                    &mut img,
+                    center_u.0 - thickness_u / 2,
+                    center_u.1,
+                    thickness_u,
+                    TILE_HEIGHT - center_u.1 - 2,
+                    Rgba([20, 120, 160, 255]),
+                );
+                draw_rect(
+                    &mut img,
+                    center_u.0 - thickness_u / 2,
+                    center_u.1 + 1,
+                    thickness_u,
+                    TILE_HEIGHT - center_u.1 - 4,
+                    Rgba([60, 200, 230, 255]),
+                );
+                draw_circle(
+                    &mut img,
+                    center_i.0,
+                    (TILE_HEIGHT - 4) as i32,
+                    2,
+                    Rgba([150, 230, 240, 255]),
+                );
             }
             "W" => {
-                draw_rect(&mut img, 2, center_u.1 - thickness_u / 2, center_u.0 - 2, thickness_u, Rgba([20, 120, 160, 255]));
-                draw_rect(&mut img, 3, center_u.1 - thickness_u / 2, center_u.0 - 4, thickness_u, Rgba([60, 200, 230, 255]));
+                draw_rect(
+                    &mut img,
+                    2,
+                    center_u.1 - thickness_u / 2,
+                    center_u.0 - 2,
+                    thickness_u,
+                    Rgba([20, 120, 160, 255]),
+                );
+                draw_rect(
+                    &mut img,
+                    3,
+                    center_u.1 - thickness_u / 2,
+                    center_u.0 - 4,
+                    thickness_u,
+                    Rgba([60, 200, 230, 255]),
+                );
                 draw_circle(&mut img, 4, center_i.1, 2, Rgba([150, 230, 240, 255]));
             }
             "E" => {
-                draw_rect(&mut img, center_u.0, center_u.1 - thickness_u / 2, TILE_WIDTH - center_u.0 - 2, thickness_u, Rgba([20, 120, 160, 255]));
-                draw_rect(&mut img, center_u.0 + 1, center_u.1 - thickness_u / 2, TILE_WIDTH - center_u.0 - 4, thickness_u, Rgba([60, 200, 230, 255]));
-                draw_circle(&mut img, (TILE_WIDTH - 4) as i32, center_i.1, 2, Rgba([150, 230, 240, 255]));
+                draw_rect(
+                    &mut img,
+                    center_u.0,
+                    center_u.1 - thickness_u / 2,
+                    TILE_WIDTH - center_u.0 - 2,
+                    thickness_u,
+                    Rgba([20, 120, 160, 255]),
+                );
+                draw_rect(
+                    &mut img,
+                    center_u.0 + 1,
+                    center_u.1 - thickness_u / 2,
+                    TILE_WIDTH - center_u.0 - 4,
+                    thickness_u,
+                    Rgba([60, 200, 230, 255]),
+                );
+                draw_circle(
+                    &mut img,
+                    (TILE_WIDTH - 4) as i32,
+                    center_i.1,
+                    2,
+                    Rgba([150, 230, 240, 255]),
+                );
             }
             _ => {}
         }
     }
 
     // Central node
-    draw_circle(&mut img, center_i.0, center_i.1, 3, Rgba([120, 210, 230, 255]));
-    draw_circle(&mut img, center_i.0, center_i.1, 1, Rgba([220, 255, 255, 255]));
+    draw_circle(
+        &mut img,
+        center_i.0,
+        center_i.1,
+        3,
+        Rgba([120, 210, 230, 255]),
+    );
+    draw_circle(
+        &mut img,
+        center_i.0,
+        center_i.1,
+        1,
+        Rgba([220, 255, 255, 255]),
+    );
 
     add_edge_darkening(&mut img, 2, 6);
     img

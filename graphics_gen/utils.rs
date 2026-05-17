@@ -108,7 +108,9 @@ pub fn draw_line(img: &mut RgbaImage, x0: i32, y0: i32, x1: i32, y1: i32, color:
 }
 
 pub fn hashed_noise(x: u32, y: u32, seed: u32) -> u32 {
-    let mut v = x.wrapping_mul(374761393).wrapping_add(y.wrapping_mul(668265263));
+    let mut v = x
+        .wrapping_mul(374761393)
+        .wrapping_add(y.wrapping_mul(668265263));
     v ^= seed.wrapping_mul(2246822519);
     v ^= v >> 13;
     v = v.wrapping_mul(1274126177);

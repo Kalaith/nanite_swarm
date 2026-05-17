@@ -4,26 +4,24 @@
 
 use macroquad::prelude::*;
 
+mod assets;
 mod data;
+mod directives;
 mod engine;
+mod screens;
 mod state;
 mod ui;
-mod screens;
-mod assets;
-mod directives;
 
-use engine::{ResearchTree, ResearchState};
-use state::{PlanetState, save_to_file, load_from_file};
-use data::{load_game_config, load_game_data, set_game_data};
 use assets::GameTextures;
+use data::{load_game_config, load_game_data, set_game_data};
+use directives::{pick_directive, Directive};
+use engine::{ResearchState, ResearchTree};
 use screens::{
-    render_main_menu, MenuAction,
-    render_planetary_view, PlanetaryAction,
-    render_research_view, ResearchAction,
-    render_interplanetary_view, InterplanetaryAction,
-    render_settings_menu, SettingsAction, Settings,
+    render_interplanetary_view, render_main_menu, render_planetary_view, render_research_view,
+    render_settings_menu, InterplanetaryAction, MenuAction, PlanetaryAction, ResearchAction,
+    Settings, SettingsAction,
 };
-use directives::{Directive, pick_directive};
+use state::{load_from_file, save_to_file, PlanetState};
 
 /// Game phases/screens
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,53 +91,60 @@ impl Game {
 
     pub fn update(&mut self) {
         match self.phase {
-            GamePhase::MainMenu => {
-                match render_main_menu(self.has_save) {
-                    MenuAction::NewGame => {
-                        self.planet_state = PlanetState::new("Mars", 24, 24, macroquad::rand::gen_range(0u64, u64::MAX), self.config.clone());
-                        self.research_state = ResearchState::default();
-                        self.sync_research_to_planet();
-                        self.sync_building_unlocks();
+            GamePhase::MainMenu => match render_main_menu(self.has_save) {
+                MenuAction::NewGame => {
+                    self.planet_state = PlanetState::new(
+                        "Mars",
+                        24,
+                        24,
+                        macroquad::rand::gen_range(0u64, u64::MAX),
+                        self.config.clone(),
+                    );
+                    self.research_state = ResearchState::default();
+                    self.sync_research_to_planet();
+                    self.sync_building_unlocks();
+                    self.phase = GamePhase::Playing;
+                }
+                MenuAction::Continue => {
+                    self.phase = GamePhase::Playing;
+                }
+                MenuAction::Load => {
+                    if let Ok(state) = load_from_file(SAVE_PATH) {
+                        self.planet_state = state;
+                        self.sync_research_from_planet();
                         self.phase = GamePhase::Playing;
-                    }
-                    MenuAction::Continue => {
-                        self.phase = GamePhase::Playing;
-                    }
-                    MenuAction::Load => {
-                        if let Ok(state) = load_from_file(SAVE_PATH) {
-                            self.planet_state = state;
-                            self.sync_research_from_planet();
-                            self.phase = GamePhase::Playing;
-                            self.has_save = true;
-                            self.sync_building_unlocks();
-                        }
-                    }
-                    MenuAction::Save => {
-                        let _ = save_to_file(&mut self.planet_state, SAVE_PATH);
                         self.has_save = true;
+                        self.sync_building_unlocks();
                     }
-                    MenuAction::Settings => {
-                        self.phase = GamePhase::Settings;
-                    }
-                    MenuAction::Quit => {}
-                    MenuAction::None => {}
                 }
-            }
-            GamePhase::Settings => {
-                match render_settings_menu(&mut self.settings) {
-                    SettingsAction::Back => {
-                        self.phase = GamePhase::MainMenu;
-                    }
-                    SettingsAction::None => {}
+                MenuAction::Save => {
+                    let _ = save_to_file(&mut self.planet_state, SAVE_PATH);
+                    self.has_save = true;
                 }
-            }
+                MenuAction::Settings => {
+                    self.phase = GamePhase::Settings;
+                }
+                MenuAction::Quit => {}
+                MenuAction::None => {}
+            },
+            GamePhase::Settings => match render_settings_menu(&mut self.settings) {
+                SettingsAction::Back => {
+                    self.phase = GamePhase::MainMenu;
+                }
+                SettingsAction::None => {}
+            },
             GamePhase::Playing => {
                 let delta = get_frame_time();
                 self.planet_state.update(delta);
                 self.update_research(delta);
                 self.update_directives(delta);
 
-                match render_planetary_view(&mut self.planet_state, self.settings.show_fps, &self.textures, &self.directive) {
+                match render_planetary_view(
+                    &mut self.planet_state,
+                    self.settings.show_fps,
+                    &self.textures,
+                    &self.directive,
+                ) {
                     PlanetaryAction::OpenResearch => {
                         self.phase = GamePhase::Research;
                     }
@@ -193,7 +198,8 @@ impl Game {
                             let planet_names = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
                             self.planet_state = PlanetState::new(
                                 planet_names[index],
-                                24, 24,
+                                24,
+                                24,
                                 macroquad::rand::gen_range(0u64, u64::MAX),
                                 self.config.clone(),
                             );
@@ -215,7 +221,8 @@ impl Game {
 
     fn update_research(&mut self, delta_time: f32) {
         let Some(current_id) = self.research_state.current_research.clone() else {
-            self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+            self.planet_state.self_cleaning_unlocked =
+                self.research_state.is_unlocked("self_cleaning_servos");
             self.sync_building_unlocks();
             self.sync_research_to_planet();
             return;
@@ -233,7 +240,8 @@ impl Game {
         let remaining = (node.data_cost - self.research_state.research_progress).max(0.0);
         if remaining <= 0.0 {
             self.research_state.complete_research();
-            self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+            self.planet_state.self_cleaning_unlocked =
+                self.research_state.is_unlocked("self_cleaning_servos");
             self.sync_building_unlocks();
             self.sync_research_to_planet();
             return;
@@ -252,7 +260,8 @@ impl Game {
             self.research_state.complete_research();
         }
 
-        self.planet_state.self_cleaning_unlocked = self.research_state.is_unlocked("self_cleaning_servos");
+        self.planet_state.self_cleaning_unlocked =
+            self.research_state.is_unlocked("self_cleaning_servos");
         self.sync_building_unlocks();
         self.sync_research_to_planet();
     }
@@ -293,7 +302,10 @@ impl Game {
 
     fn update_directives(&mut self, delta_time: f32) {
         self.directive_timer += delta_time;
-        if self.directive_timer >= 600.0 || self.directive.duration <= 0.0 || self.directive.completed {
+        if self.directive_timer >= 600.0
+            || self.directive.duration <= 0.0
+            || self.directive.completed
+        {
             if self.directive.completed {
                 self.planet_state.resources.data += self.directive.reward_data;
             }

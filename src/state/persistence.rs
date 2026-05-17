@@ -1,10 +1,10 @@
 //! Save/load functionality
 
 use super::PlanetState;
-use serde_json;
 use macroquad::miniquad;
-use std::io;
+use serde_json;
 use std::fs;
+use std::io;
 
 fn unix_seconds_now() -> i64 {
     (miniquad::date::now() as i64).max(0)
@@ -30,7 +30,8 @@ pub fn load_from_json(json: &str) -> Result<PlanetState, serde_json::Error> {
 
 pub fn save_to_file(state: &mut PlanetState, path: &str) -> Result<(), io::Error> {
     let json = save_to_json(state).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    fs::write(path, json)
+    macroquad_toolkit::persistence::save_string_atomic(path, &json)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
 }
 
 pub fn load_from_file(path: &str) -> Result<PlanetState, io::Error> {

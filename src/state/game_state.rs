@@ -1,11 +1,13 @@
 //! Current planetary state
 
-use serde::{Deserialize, Serialize};
+use crate::data::GameConfig;
+use crate::engine::{
+    find_path, BuildingType, DroneManager, DroneState, Grid, GridPos, TerrainType,
+};
+use macroquad::miniquad;
 use macroquad::prelude::Color;
 use macroquad::rand::gen_range;
-use crate::engine::{Grid, GridPos, BuildingType, DroneManager, find_path, DroneState, TerrainType};
-use crate::data::GameConfig;
-use macroquad::miniquad;
+use serde::{Deserialize, Serialize};
 
 const DUST_RATE: f32 = 0.12; // dust per second
 const SWEEPER_RATE: f32 = 0.6; // dust cleared per second
@@ -185,7 +187,10 @@ impl PlanetState {
                 biomass: 0.0,
             },
             grid,
-            drones: DroneManager::new(config.resources.drone_carry_capacity, config.resources.drone_speed),
+            drones: DroneManager::new(
+                config.resources.drone_carry_capacity,
+                config.resources.drone_speed,
+            ),
             research: ResearchProgress::default(),
             config,
             time_played: 0.0,
@@ -302,8 +307,15 @@ impl PlanetState {
 
         let mut placed_any = false;
         for pos in path {
-            let Some(tile) = self.grid.get(pos) else { continue; };
-            if tile.building.as_ref().map(|b| b.building_type == BuildingType::Conduit).unwrap_or(false) {
+            let Some(tile) = self.grid.get(pos) else {
+                continue;
+            };
+            if tile
+                .building
+                .as_ref()
+                .map(|b| b.building_type == BuildingType::Conduit)
+                .unwrap_or(false)
+            {
                 continue;
             }
 
@@ -328,8 +340,12 @@ impl PlanetState {
     }
 
     pub fn try_sell_building(&mut self, pos: GridPos) -> bool {
-        let Some(tile) = self.grid.get(pos) else { return false; };
-        let Some(building) = tile.building.as_ref() else { return false; };
+        let Some(tile) = self.grid.get(pos) else {
+            return false;
+        };
+        let Some(building) = tile.building.as_ref() else {
+            return false;
+        };
         if building.building_type == BuildingType::Core {
             return false;
         }
@@ -485,7 +501,9 @@ impl PlanetState {
             if let Some(core_tile) = self.grid.get(core_pos) {
                 if let Some(core) = core_tile.building.as_ref() {
                     if core.powered && !core.is_dust_stalled() {
-                        self.resources.data += self.config.resources.core_data_rate * sim_delta * core.dust_efficiency();
+                        self.resources.data += self.config.resources.core_data_rate
+                            * sim_delta
+                            * core.dust_efficiency();
                     }
                 }
             }
@@ -504,7 +522,10 @@ impl PlanetState {
         self.battery_seconds = (self.battery_seconds - delta_time).max(0.0);
 
         // Cap resources
-        self.resources.energy = self.resources.energy.clamp(0.0, self.config.resources.max_energy);
+        self.resources.energy = self
+            .resources
+            .energy
+            .clamp(0.0, self.config.resources.max_energy);
         self.resources.minerals = self.resources.minerals.min(self.mineral_capacity());
         self.resources.data = self.resources.data.min(1000.0);
         self.resources.biomass = self.resources.biomass.min(1000.0);
@@ -529,8 +550,10 @@ impl PlanetState {
         if let Some(core) = core_pos {
             for drill_pos in drill_positions {
                 // Check if drill is powered
-                let Some(building) = self.grid.get(drill_pos)
-                    .and_then(|t| t.building.as_ref()) else { continue; };
+                let Some(building) = self.grid.get(drill_pos).and_then(|t| t.building.as_ref())
+                else {
+                    continue;
+                };
                 let is_powered = building.powered;
                 if building.is_dust_stalled() {
                     continue;
@@ -548,7 +571,9 @@ impl PlanetState {
                 if *timer >= 2.0 {
                     *timer = 0.0;
 
-                    let idle_drone = self.drones.drones()
+                    let idle_drone = self
+                        .drones
+                        .drones()
                         .iter()
                         .find(|d| d.home_drill == drill_pos && d.state == DroneState::Idle)
                         .map(|d| d.id);
@@ -570,8 +595,9 @@ impl PlanetState {
 
         for server_pos in server_positions {
             // Check if server is powered
-            let Some(building) = self.grid.get(server_pos)
-                .and_then(|t| t.building.as_ref()) else { continue; };
+            let Some(building) = self.grid.get(server_pos).and_then(|t| t.building.as_ref()) else {
+                continue;
+            };
             let is_powered = building.powered;
             if building.is_dust_stalled() {
                 continue;
@@ -599,30 +625,38 @@ impl PlanetState {
         let powered_sweepers: Vec<GridPos> = sweeper_positions
             .into_iter()
             .filter(|pos| {
-                self.grid.get(*pos)
+                self.grid
+                    .get(*pos)
                     .and_then(|t| t.building.as_ref())
                     .map(|b| b.powered && !b.is_dust_stalled())
                     .unwrap_or(false)
             })
             .collect();
-        let filter_positions: Vec<GridPos> = self.grid
+        let filter_positions: Vec<GridPos> = self
+            .grid
             .iter_tiles()
             .filter_map(|(pos, tile)| if tile.filter { Some(pos) } else { None })
             .collect();
-        let cleared_forest_positions: Vec<GridPos> = self.grid
+        let cleared_forest_positions: Vec<GridPos> = self
+            .grid
             .iter_tiles()
             .filter_map(|(pos, tile)| if tile.forest_cleared { Some(pos) } else { None })
             .collect();
 
         for (pos, tile) in self.grid.iter_tiles_mut() {
-            let Some(building) = tile.building.as_mut() else { continue; };
+            let Some(building) = tile.building.as_mut() else {
+                continue;
+            };
             let mut rate = DUST_RATE;
 
             if self.self_cleaning_unlocked {
                 rate *= 0.6;
             }
 
-            if filter_positions.iter().any(|filter_pos| pos.distance(*filter_pos) as i32 <= FILTER_RADIUS) {
+            if filter_positions
+                .iter()
+                .any(|filter_pos| pos.distance(*filter_pos) as i32 <= FILTER_RADIUS)
+            {
                 rate *= FILTER_RATE_MULTIPLIER;
             }
             if cleared_forest_positions
@@ -634,12 +668,15 @@ impl PlanetState {
 
             // Apply sweeper cleaning if nearby powered sweeper exists
             let mut clean_rate = 0.0;
-            if powered_sweepers.iter().any(|sweeper_pos| pos.distance(*sweeper_pos) as i32 <= SWEEPER_RADIUS) {
+            if powered_sweepers
+                .iter()
+                .any(|sweeper_pos| pos.distance(*sweeper_pos) as i32 <= SWEEPER_RADIUS)
+            {
                 clean_rate = SWEEPER_RATE;
             }
 
-            building.dust = (building.dust + rate * delta_time - clean_rate * delta_time)
-                .clamp(0.0, 100.0);
+            building.dust =
+                (building.dust + rate * delta_time - clean_rate * delta_time).clamp(0.0, 100.0);
         }
     }
 
@@ -662,7 +699,9 @@ impl PlanetState {
         let mut power_bonus = 0.0;
 
         for (_, tile) in self.grid.iter_tiles_mut() {
-            let Some(building) = tile.building.as_mut() else { continue; };
+            let Some(building) = tile.building.as_mut() else {
+                continue;
+            };
             if building.building_type != BuildingType::BiomassHarvester {
                 continue;
             }
@@ -706,18 +745,23 @@ impl PlanetState {
         }
 
         let has_drill = !self.grid.find_buildings(BuildingType::Drill).is_empty();
-        let drill_connected = self.grid.iter_tiles()
-            .any(|(_, tile)| {
-                tile.building
-                    .as_ref()
-                    .map(|b| b.building_type == BuildingType::Drill && b.connected_to_core)
-                    .unwrap_or(false)
-            });
+        let drill_connected = self.grid.iter_tiles().any(|(_, tile)| {
+            tile.building
+                .as_ref()
+                .map(|b| b.building_type == BuildingType::Drill && b.connected_to_core)
+                .unwrap_or(false)
+        });
         let conduits_unlocked = self.is_building_unlocked(BuildingType::Conduit);
         let server_unlocked = self.is_building_unlocked(BuildingType::ServerBank);
         let wind_unlocked = self.is_building_unlocked(BuildingType::WindTurbine);
-        let has_wind_turbine = !self.grid.find_buildings(BuildingType::WindTurbine).is_empty();
-        let has_server_bank = !self.grid.find_buildings(BuildingType::ServerBank).is_empty();
+        let has_wind_turbine = !self
+            .grid
+            .find_buildings(BuildingType::WindTurbine)
+            .is_empty();
+        let has_server_bank = !self
+            .grid
+            .find_buildings(BuildingType::ServerBank)
+            .is_empty();
 
         match self.tutorial_step {
             0 if has_drill => self.tutorial_step = 1,
@@ -788,7 +832,8 @@ impl PlanetState {
     }
 
     pub fn is_building_unlocked(&self, building_type: BuildingType) -> bool {
-        matches!(building_type, BuildingType::Core) || self.unlocked_buildings.contains(&building_type)
+        matches!(building_type, BuildingType::Core)
+            || self.unlocked_buildings.contains(&building_type)
     }
 
     pub fn unlock_building(&mut self, building_type: BuildingType) {
@@ -799,8 +844,13 @@ impl PlanetState {
 
     pub fn mineral_capacity(&self) -> f32 {
         let storage_count = self.grid.find_buildings(BuildingType::Storage).len() as f32;
-        let mut cap = self.config.resources.base_mineral_cap + storage_count * self.config.resources.storage_bonus;
-        if self.research.unlocked_techs.contains(&"storage_optimization".to_string()) {
+        let mut cap = self.config.resources.base_mineral_cap
+            + storage_count * self.config.resources.storage_bonus;
+        if self
+            .research
+            .unlocked_techs
+            .contains(&"storage_optimization".to_string())
+        {
             cap += self.config.resources.storage_tech_bonus;
         }
         cap
@@ -841,7 +891,11 @@ impl PlanetState {
     }
 
     pub fn placement_scale(&self, pos: GridPos) -> f32 {
-        let Some(anim) = self.placement_anims.iter().find(|anim| anim.position == pos) else {
+        let Some(anim) = self
+            .placement_anims
+            .iter()
+            .find(|anim| anim.position == pos)
+        else {
             return 1.0;
         };
         let progress = (anim.timer / 0.3).clamp(0.0, 1.0);
@@ -874,7 +928,14 @@ impl PlanetState {
         }
     }
 
-    fn spawn_particle(&mut self, position: (f32, f32), velocity: (f32, f32), life: f32, color: Color, size: f32) {
+    fn spawn_particle(
+        &mut self,
+        position: (f32, f32),
+        velocity: (f32, f32),
+        life: f32,
+        color: Color,
+        size: f32,
+    ) {
         self.particles.push(Particle {
             position,
             velocity,
@@ -897,7 +958,13 @@ impl PlanetState {
             let speed = gen_range(0.6, 1.2);
             let velocity = (angle.cos() * speed, angle.sin() * speed);
             let life = gen_range(0.35, 0.6);
-            self.spawn_particle(origin, velocity, life, Color::new(1.0, 0.42, 0.21, 1.0), 3.0);
+            self.spawn_particle(
+                origin,
+                velocity,
+                life,
+                Color::new(1.0, 0.42, 0.21, 1.0),
+                3.0,
+            );
         }
     }
 
@@ -920,9 +987,13 @@ impl PlanetState {
         }
         self.particle_timer = 0.0;
 
-        let drone_positions: Vec<(f32, f32)> = self.drones.drones()
+        let drone_positions: Vec<(f32, f32)> = self
+            .drones
+            .drones()
             .iter()
-            .filter(|drone| drone.state == DroneState::MovingToCore || drone.state == DroneState::MovingToDrill)
+            .filter(|drone| {
+                drone.state == DroneState::MovingToCore || drone.state == DroneState::MovingToDrill
+            })
             .map(|drone| drone.visual_position())
             .collect();
 

@@ -1,8 +1,8 @@
 //! Neural network research interface
 
+use crate::engine::{ResearchState, ResearchTree};
+use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
-use crate::ui::{Colors, Dimensions, draw_button_sized, draw_panel};
-use crate::engine::{ResearchTree, ResearchState};
 
 const NODE_RADIUS: f32 = 25.0;
 const GRID_SCALE: f32 = 100.0;
@@ -36,13 +36,24 @@ pub fn render_research_view(
     for i in 0..120u32 {
         let x = (i as f32 * 37.7).sin().abs() * screen_w;
         let y = (i as f32 * 19.3).cos().abs() * screen_h;
-        draw_circle(x, y, 1.0 + (i % 3) as f32 * 0.4, Color::new(0.0, 0.7, 0.9, 0.06));
+        draw_circle(
+            x,
+            y,
+            1.0 + (i % 3) as f32 * 0.4,
+            Color::new(0.0, 0.7, 0.9, 0.06),
+        );
     }
 
     // Header
     draw_panel(0.0, 0.0, screen_w, HEADER_HEIGHT);
     draw_text("Neural Network", 18.0, 30.0, 18.0, Colors::PRIMARY);
-    draw_text(&format!("Data {:.0}", data_available), 18.0, 52.0, 12.0, Colors::TEXT_DIM);
+    draw_text(
+        &format!("Data {:.0}", data_available),
+        18.0,
+        52.0,
+        12.0,
+        Colors::TEXT_DIM,
+    );
     if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
         return ResearchAction::Close;
     }
@@ -52,33 +63,92 @@ pub fn render_research_view(
     let left_panel_w = 280.0;
     let left_panel_h = screen_h - left_panel_y - 80.0;
     draw_panel(left_panel_x, left_panel_y, left_panel_w, left_panel_h);
-    draw_text("Research Intel", left_panel_x + 12.0, left_panel_y + 28.0, 16.0, Colors::PRIMARY);
+    draw_text(
+        "Research Intel",
+        left_panel_x + 12.0,
+        left_panel_y + 28.0,
+        16.0,
+        Colors::PRIMARY,
+    );
 
     let right_panel_w = 260.0;
     let right_panel_x = screen_w - right_panel_w - 16.0;
     let right_panel_y = HEADER_HEIGHT + 12.0;
     let right_panel_h = screen_h - right_panel_y - 80.0;
     draw_panel(right_panel_x, right_panel_y, right_panel_w, right_panel_h);
-    draw_text("Legend", right_panel_x + 12.0, right_panel_y + 28.0, 16.0, Colors::PRIMARY);
+    draw_text(
+        "Legend",
+        right_panel_x + 12.0,
+        right_panel_y + 28.0,
+        16.0,
+        Colors::PRIMARY,
+    );
 
     let mut left_text_y = left_panel_y + 56.0;
     if research_locked {
-        draw_text("Research Locked (power collapse)", left_panel_x + 12.0, left_text_y, 12.0, Colors::ERROR);
+        draw_text(
+            "Research Locked (power collapse)",
+            left_panel_x + 12.0,
+            left_text_y,
+            12.0,
+            Colors::ERROR,
+        );
         left_text_y += 24.0;
     }
     if let Some(current) = &research_state.current_research {
         if let Some(node) = research_tree.get_node(current) {
             let progress = research_state.research_progress.min(node.data_cost);
-            let pct = if node.data_cost > 0.0 { progress / node.data_cost } else { 1.0 };
-            draw_text("Active Research", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
-            draw_text(&node.name, left_panel_x + 12.0, left_text_y + 18.0, 14.0, Colors::TEXT);
-            draw_rectangle(left_panel_x + 12.0, left_text_y + 32.0, left_panel_w - 24.0, 10.0, Colors::SURFACE_DARK);
-            draw_rectangle(left_panel_x + 12.0, left_text_y + 32.0, (left_panel_w - 24.0) * pct, 10.0, Colors::PRIMARY);
-            draw_rectangle_lines(left_panel_x + 12.0, left_text_y + 32.0, left_panel_w - 24.0, 10.0, 1.0, Colors::PANEL_BORDER);
+            let pct = if node.data_cost > 0.0 {
+                progress / node.data_cost
+            } else {
+                1.0
+            };
+            draw_text(
+                "Active Research",
+                left_panel_x + 12.0,
+                left_text_y,
+                12.0,
+                Colors::TEXT_DIM,
+            );
+            draw_text(
+                &node.name,
+                left_panel_x + 12.0,
+                left_text_y + 18.0,
+                14.0,
+                Colors::TEXT,
+            );
+            draw_rectangle(
+                left_panel_x + 12.0,
+                left_text_y + 32.0,
+                left_panel_w - 24.0,
+                10.0,
+                Colors::SURFACE_DARK,
+            );
+            draw_rectangle(
+                left_panel_x + 12.0,
+                left_text_y + 32.0,
+                (left_panel_w - 24.0) * pct,
+                10.0,
+                Colors::PRIMARY,
+            );
+            draw_rectangle_lines(
+                left_panel_x + 12.0,
+                left_text_y + 32.0,
+                left_panel_w - 24.0,
+                10.0,
+                1.0,
+                Colors::PANEL_BORDER,
+            );
             left_text_y += 60.0;
         }
     } else {
-        draw_text("No research selected.", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
+        draw_text(
+            "No research selected.",
+            left_panel_x + 12.0,
+            left_text_y,
+            12.0,
+            Colors::TEXT_DIM,
+        );
         left_text_y += 24.0;
     }
 
@@ -105,7 +175,14 @@ pub fn render_research_view(
         };
 
         draw_line(from_x, from_y, to_x, to_y, 2.0, line_color);
-        draw_line(from_x, from_y, to_x, to_y, 1.0, Color::new(0.6, 0.8, 1.0, 0.15));
+        draw_line(
+            from_x,
+            from_y,
+            to_x,
+            to_y,
+            1.0,
+            Color::new(0.6, 0.8, 1.0, 0.15),
+        );
     }
 
     // Draw nodes
@@ -115,7 +192,8 @@ pub fn render_research_view(
 
         let is_unlocked = research_state.is_unlocked(&node.id);
         let can_select = research_tree.can_select(&node.id, &research_state.unlocked);
-        let can_research_now = research_tree.can_research(&node.id, &research_state.unlocked, data_available);
+        let can_research_now =
+            research_tree.can_research(&node.id, &research_state.unlocked, data_available);
         let is_current = research_state.current_research.as_ref() == Some(&node.id);
 
         // Check if mouse is hovering
@@ -142,8 +220,18 @@ pub fn render_research_view(
         if is_unlocked {
             let glow_outer = NODE_RADIUS + 6.0 + pulse * 3.0;
             let glow_inner = NODE_RADIUS + 3.0 + pulse * 1.5;
-            draw_circle(node_x, node_y, glow_outer, Color::new(0.0, 0.85, 1.0, 0.18 + pulse * 0.08));
-            draw_circle(node_x, node_y, glow_inner, Color::new(0.0, 0.85, 1.0, 0.25 + pulse * 0.1));
+            draw_circle(
+                node_x,
+                node_y,
+                glow_outer,
+                Color::new(0.0, 0.85, 1.0, 0.18 + pulse * 0.08),
+            );
+            draw_circle(
+                node_x,
+                node_y,
+                glow_inner,
+                Color::new(0.0, 0.85, 1.0, 0.25 + pulse * 0.1),
+            );
         }
 
         // Draw node
@@ -170,63 +258,204 @@ pub fn render_research_view(
 
         // Hover effect
         if is_hovered {
-            draw_circle_lines(node_x, node_y, NODE_RADIUS + 5.0 + pulse * 2.0, 2.0, Colors::PRIMARY);
-            draw_text(&node.name, node_x - 22.0, node_y - NODE_RADIUS - 12.0, 12.0, Colors::TEXT);
+            draw_circle_lines(
+                node_x,
+                node_y,
+                NODE_RADIUS + 5.0 + pulse * 2.0,
+                2.0,
+                Colors::PRIMARY,
+            );
+            draw_text(
+                &node.name,
+                node_x - 22.0,
+                node_y - NODE_RADIUS - 12.0,
+                12.0,
+                Colors::TEXT,
+            );
         }
 
         // Draw abbreviated name
         let abbrev = &node.name[..node.name.len().min(7)];
         let text_size = measure_text(abbrev, None, 12, 1.0);
-        let text_color = if is_unlocked { Colors::BACKGROUND } else { Colors::TEXT };
-        draw_text(abbrev, node_x - text_size.width / 2.0, node_y + 4.0, 12.0, text_color);
+        let text_color = if is_unlocked {
+            Colors::BACKGROUND
+        } else {
+            Colors::TEXT
+        };
+        draw_text(
+            abbrev,
+            node_x - text_size.width / 2.0,
+            node_y + 4.0,
+            12.0,
+            text_color,
+        );
 
         // Draw cost below if not unlocked
         if !is_unlocked && node.data_cost > 0.0 {
             let cost_str = format!("{:.0}", node.data_cost);
-            let cost_color = if can_research_now { Colors::SUCCESS } else { Colors::TEXT_DIM };
-            draw_text(&cost_str, node_x - 10.0, node_y + NODE_RADIUS + 15.0, 12.0, cost_color);
+            let cost_color = if can_research_now {
+                Colors::SUCCESS
+            } else {
+                Colors::TEXT_DIM
+            };
+            draw_text(
+                &cost_str,
+                node_x - 10.0,
+                node_y + NODE_RADIUS + 15.0,
+                12.0,
+                cost_color,
+            );
         }
     }
 
     // Info panel for hovered node
     if let Some(node_id) = hovered_node {
         if let Some(node) = research_tree.get_node(node_id) {
-            draw_text("Hovered Node", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
-            draw_text(&node.name, left_panel_x + 12.0, left_text_y + 18.0, 14.0, Colors::TEXT);
-            draw_text(&node.description, left_panel_x + 12.0, left_text_y + 36.0, 12.0, Colors::TEXT_DIM);
+            draw_text(
+                "Hovered Node",
+                left_panel_x + 12.0,
+                left_text_y,
+                12.0,
+                Colors::TEXT_DIM,
+            );
+            draw_text(
+                &node.name,
+                left_panel_x + 12.0,
+                left_text_y + 18.0,
+                14.0,
+                Colors::TEXT,
+            );
+            draw_text(
+                &node.description,
+                left_panel_x + 12.0,
+                left_text_y + 36.0,
+                12.0,
+                Colors::TEXT_DIM,
+            );
 
             if !research_state.is_unlocked(node_id) {
                 let cost_text = format!("Cost {:.0} Data", node.data_cost);
-                draw_text(&cost_text, left_panel_x + 12.0, left_text_y + 54.0, 12.0, Colors::ACCENT);
+                draw_text(
+                    &cost_text,
+                    left_panel_x + 12.0,
+                    left_text_y + 54.0,
+                    12.0,
+                    Colors::ACCENT,
+                );
 
                 if research_tree.can_select(node_id, &research_state.unlocked) {
-                    if research_tree.can_research(node_id, &research_state.unlocked, data_available) {
-                        draw_text("Click to research", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::SUCCESS);
+                    if research_tree.can_research(node_id, &research_state.unlocked, data_available)
+                    {
+                        draw_text(
+                            "Click to research",
+                            left_panel_x + 12.0,
+                            left_text_y + 72.0,
+                            12.0,
+                            Colors::SUCCESS,
+                        );
                     } else {
-                        draw_text("Click to select (insufficient Data)", left_panel_x + 12.0, left_text_y + 72.0, 11.0, Colors::WARNING);
+                        draw_text(
+                            "Click to select (insufficient Data)",
+                            left_panel_x + 12.0,
+                            left_text_y + 72.0,
+                            11.0,
+                            Colors::WARNING,
+                        );
                     }
-                } else if !node.prerequisites.iter().all(|p| research_state.is_unlocked(p)) {
-                    draw_text("Prerequisites not met", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::ERROR);
+                } else if !node
+                    .prerequisites
+                    .iter()
+                    .all(|p| research_state.is_unlocked(p))
+                {
+                    draw_text(
+                        "Prerequisites not met",
+                        left_panel_x + 12.0,
+                        left_text_y + 72.0,
+                        12.0,
+                        Colors::ERROR,
+                    );
                 } else {
-                    draw_text("Not enough Data", left_panel_x + 12.0, left_text_y + 72.0, 12.0, Colors::WARNING);
+                    draw_text(
+                        "Not enough Data",
+                        left_panel_x + 12.0,
+                        left_text_y + 72.0,
+                        12.0,
+                        Colors::WARNING,
+                    );
                 }
             } else {
-                draw_text("UNLOCKED", left_panel_x + 12.0, left_text_y + 60.0, 12.0, Colors::SUCCESS);
+                draw_text(
+                    "UNLOCKED",
+                    left_panel_x + 12.0,
+                    left_text_y + 60.0,
+                    12.0,
+                    Colors::SUCCESS,
+                );
             }
         }
     } else {
-        draw_text("Hover a node to inspect.", left_panel_x + 12.0, left_text_y, 12.0, Colors::TEXT_DIM);
+        draw_text(
+            "Hover a node to inspect.",
+            left_panel_x + 12.0,
+            left_text_y,
+            12.0,
+            Colors::TEXT_DIM,
+        );
     }
 
     // Legend
-    draw_text("Unlocked", right_panel_x + 12.0, right_panel_y + 56.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(right_panel_x + 18.0, right_panel_y + 74.0, 6.0, Colors::PRIMARY);
-    draw_text("In Progress", right_panel_x + 12.0, right_panel_y + 98.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(right_panel_x + 18.0, right_panel_y + 116.0, 6.0, Colors::WARNING);
-    draw_text("Available", right_panel_x + 12.0, right_panel_y + 140.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(right_panel_x + 18.0, right_panel_y + 158.0, 6.0, Colors::SUCCESS);
-    draw_text("Locked", right_panel_x + 12.0, right_panel_y + 182.0, 12.0, Colors::TEXT_DIM);
-    draw_circle(right_panel_x + 18.0, right_panel_y + 200.0, 6.0, Colors::SECONDARY);
+    draw_text(
+        "Unlocked",
+        right_panel_x + 12.0,
+        right_panel_y + 56.0,
+        12.0,
+        Colors::TEXT_DIM,
+    );
+    draw_circle(
+        right_panel_x + 18.0,
+        right_panel_y + 74.0,
+        6.0,
+        Colors::PRIMARY,
+    );
+    draw_text(
+        "In Progress",
+        right_panel_x + 12.0,
+        right_panel_y + 98.0,
+        12.0,
+        Colors::TEXT_DIM,
+    );
+    draw_circle(
+        right_panel_x + 18.0,
+        right_panel_y + 116.0,
+        6.0,
+        Colors::WARNING,
+    );
+    draw_text(
+        "Available",
+        right_panel_x + 12.0,
+        right_panel_y + 140.0,
+        12.0,
+        Colors::TEXT_DIM,
+    );
+    draw_circle(
+        right_panel_x + 18.0,
+        right_panel_y + 158.0,
+        6.0,
+        Colors::SUCCESS,
+    );
+    draw_text(
+        "Locked",
+        right_panel_x + 12.0,
+        right_panel_y + 182.0,
+        12.0,
+        Colors::TEXT_DIM,
+    );
+    draw_circle(
+        right_panel_x + 18.0,
+        right_panel_y + 200.0,
+        6.0,
+        Colors::SECONDARY,
+    );
 
     // Instructions
     draw_text(

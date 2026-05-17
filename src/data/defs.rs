@@ -1,14 +1,14 @@
 //! Game data definitions loaded from JSON.
 
+#[cfg(target_arch = "wasm32")]
+use macroquad::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
-#[cfg(target_arch = "wasm32")]
-use macroquad::prelude::*;
 
-use crate::engine::{ResearchNode, ResearchTree};
 use crate::data::load_json;
+use crate::engine::{ResearchNode, ResearchTree};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Cost {
@@ -108,25 +108,34 @@ pub struct GameData {
 impl GameData {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn load() -> Self {
-        let buildings_json = fs::read_to_string("assets/buildings.json").unwrap_or_default();
-        let terrain_json = fs::read_to_string("assets/terrain.json").unwrap_or_default();
-        let research_json = fs::read_to_string("assets/research.json").unwrap_or_default();
+        let buildings_json = fs::read_to_string("assets/buildings.json")
+            .unwrap_or_else(|_| include_str!("../../assets/buildings.json").to_string());
+        let terrain_json = fs::read_to_string("assets/terrain.json")
+            .unwrap_or_else(|_| include_str!("../../assets/terrain.json").to_string());
+        let research_json = fs::read_to_string("assets/research.json")
+            .unwrap_or_else(|_| include_str!("../../assets/research.json").to_string());
 
         Self::from_json_strings(&buildings_json, &terrain_json, &research_json)
     }
 
     #[cfg(target_arch = "wasm32")]
     pub async fn load_async() -> Self {
-        let buildings_json = load_string("assets/buildings.json").await.unwrap_or_default();
+        let buildings_json = load_string("assets/buildings.json")
+            .await
+            .unwrap_or_default();
         let terrain_json = load_string("assets/terrain.json").await.unwrap_or_default();
-        let research_json = load_string("assets/research.json").await.unwrap_or_default();
+        let research_json = load_string("assets/research.json")
+            .await
+            .unwrap_or_default();
 
         Self::from_json_strings(&buildings_json, &terrain_json, &research_json)
     }
 
     fn from_json_strings(buildings_json: &str, terrain_json: &str, research_json: &str) -> Self {
-        let building_file: BuildingDataFile = load_json(buildings_json).unwrap_or_else(|_| BuildingDataFile { buildings: vec![] });
-        let terrain_file: TerrainDataFile = load_json(terrain_json).unwrap_or_else(|_| TerrainDataFile { terrain: vec![] });
+        let building_file: BuildingDataFile =
+            load_json(buildings_json).unwrap_or_else(|_| BuildingDataFile { buildings: vec![] });
+        let terrain_file: TerrainDataFile =
+            load_json(terrain_json).unwrap_or_else(|_| TerrainDataFile { terrain: vec![] });
         let research: ResearchData = load_json(research_json).unwrap_or_else(|_| ResearchData {
             starting_unlocked: vec!["core".to_string(), "basic_mining".to_string()],
             nodes: vec![],
@@ -152,14 +161,24 @@ impl GameData {
     }
 
     pub fn building(&self, id: &str) -> &BuildingDef {
-        self.buildings_by_id.get(id).unwrap_or_else(|| panic!("Missing building def for id: {}", id))
+        self.buildings_by_id
+            .get(id)
+            .unwrap_or_else(|| panic!("Missing building def for id: {}", id))
     }
 
     pub fn terrain(&self, id: &str) -> &TerrainDef {
-        self.terrain_by_id.get(id).unwrap_or_else(|| panic!("Missing terrain def for id: {}", id))
+        self.terrain_by_id
+            .get(id)
+            .unwrap_or_else(|| panic!("Missing terrain def for id: {}", id))
     }
 
     pub fn research_tree(&self) -> ResearchTree {
-        ResearchTree::from_nodes(self.research.nodes.iter().map(|node| node.to_node()).collect())
+        ResearchTree::from_nodes(
+            self.research
+                .nodes
+                .iter()
+                .map(|node| node.to_node())
+                .collect(),
+        )
     }
 }

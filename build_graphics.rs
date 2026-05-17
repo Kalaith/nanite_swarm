@@ -12,7 +12,11 @@ fn main() {
 }
 
 fn create_asset_directories() {
-    let directories = ["assets/tiles", "assets/tiles/buildings", "assets/ui/buildings"];
+    let directories = [
+        "assets/tiles",
+        "assets/tiles/buildings",
+        "assets/ui/buildings",
+    ];
 
     for dir in directories {
         std::fs::create_dir_all(dir).unwrap();

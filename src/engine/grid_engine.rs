@@ -1,8 +1,9 @@
 //! Spatial calculations, terrain, buildings, and pathfinding
 
-use serde::{Deserialize, Serialize};
 use crate::data;
-use std::collections::{HashMap, VecDeque};
+use macroquad_toolkit::grid::{bfs_path as toolkit_bfs_path, TilePos};
+use macroquad_toolkit::rng::SeededRng;
+use serde::{Deserialize, Serialize};
 
 /// Grid position
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -48,17 +49,25 @@ impl GridPos {
             y: (index as u32 / width) as i32,
         }
     }
+
+    pub(crate) fn to_tile_pos(self) -> TilePos {
+        TilePos::new(self.x, self.y)
+    }
+
+    pub(crate) fn from_tile_pos(pos: TilePos) -> Self {
+        Self::new(pos.x, pos.y)
+    }
 }
 
 /// Terrain types that affect gameplay
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainType {
-    Empty,      // Buildable ground
-    Mountain,   // Can harvest for iron or place wind turbine
-    Forest,     // Can harvest for biomass or keep as pollution buffer
-    Water,      // Cannot build, may provide cooling
-    Rough,      // Difficult to build on (result of harvesting)
-    Void,       // Unbuildable gap (volcanic terrain)
+    Empty,    // Buildable ground
+    Mountain, // Can harvest for iron or place wind turbine
+    Forest,   // Can harvest for biomass or keep as pollution buffer
+    Water,    // Cannot build, may provide cooling
+    Rough,    // Difficult to build on (result of harvesting)
+    Void,     // Unbuildable gap (volcanic terrain)
 }
 
 impl TerrainType {
@@ -130,15 +139,15 @@ impl Default for TerrainType {
 /// Building types that can be placed on the grid
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuildingType {
-    Core,       // Central AI structure - receives resources
-    Drill,      // Extracts minerals, spawns drones
-    Conduit,    // Connects buildings for resource flow
-    Bridge,     // Allows conduit crossings (overlay)
-    PowerNode,  // Extends power grid
-    WindTurbine, // Generates power (bonus on mountains)
-    ServerBank, // Generates data, consumes power
-    Sweeper,    // Cleans dust buildup in nearby buildings
-    Storage,    // Increases mineral storage capacity
+    Core,             // Central AI structure - receives resources
+    Drill,            // Extracts minerals, spawns drones
+    Conduit,          // Connects buildings for resource flow
+    Bridge,           // Allows conduit crossings (overlay)
+    PowerNode,        // Extends power grid
+    WindTurbine,      // Generates power (bonus on mountains)
+    ServerBank,       // Generates data, consumes power
+    Sweeper,          // Cleans dust buildup in nearby buildings
+    Storage,          // Increases mineral storage capacity
     BiomassHarvester, // Consumes forest biomass for power
 }
 
@@ -191,7 +200,10 @@ impl BuildingType {
 
     /// Keyboard shortcut for quick selection
     pub fn hotkey(&self) -> Option<char> {
-        self.def().hotkey.as_ref().and_then(|key| key.chars().next())
+        self.def()
+            .hotkey
+            .as_ref()
+            .and_then(|key| key.chars().next())
     }
 
     /// Short description for UI
@@ -204,7 +216,6 @@ impl BuildingType {
         let def = self.def();
         def.power_generation - def.power_consumption
     }
-
 }
 
 /// A building placed on the grid
@@ -213,8 +224,8 @@ pub struct Building {
     pub building_type: BuildingType,
     pub position: GridPos,
     pub powered: bool,
-    pub efficiency: f32,  // 0.0 to 1.0+
-    pub connected_to_core: bool,  // For logistics validation
+    pub efficiency: f32,         // 0.0 to 1.0+
+    pub connected_to_core: bool, // For logistics validation
     #[serde(default)]
     pub dust: f32, // 0.0 to 100.0
 }
@@ -309,7 +320,7 @@ impl Building {
 pub struct Tile {
     pub terrain: TerrainType,
     pub building: Option<Building>,
-    pub revealed: bool,  // For fog of war / expansion
+    pub revealed: bool, // For fog of war / expansion
     #[serde(default)]
     pub bridge: bool,
     #[serde(default)]
@@ -403,7 +414,11 @@ impl Grid {
             });
         }
 
-        Self { width, height, tiles }
+        Self {
+            width,
+            height,
+            tiles,
+        }
     }
 
     /// Get tile at position (returns None if out of bounds)
@@ -447,7 +462,8 @@ impl Grid {
                 return tile.terrain.is_buildable() || tile.bridge;
             }
             if building_type == BuildingType::Bridge {
-                return matches!(tile.terrain, TerrainType::Water | TerrainType::Void) && !tile.bridge;
+                return matches!(tile.terrain, TerrainType::Water | TerrainType::Void)
+                    && !tile.bridge;
             }
             if building_type == BuildingType::BiomassHarvester {
                 return tile.terrain == TerrainType::Forest && !tile.filter;
@@ -476,9 +492,7 @@ impl Grid {
             let mut building = Building::new(building_type, pos);
 
             // Wind turbines on mountains get efficiency bonus
-            if building_type == BuildingType::WindTurbine
-                && tile.terrain == TerrainType::Mountain
-            {
+            if building_type == BuildingType::WindTurbine && tile.terrain == TerrainType::Mountain {
                 building.efficiency = 2.0; // +100% bonus
             }
 
@@ -501,15 +515,13 @@ impl Grid {
 
     /// Reveal tiles around a position
     pub fn reveal_around(&mut self, center: GridPos, radius: u32) {
-        for dy in -(radius as i32)..=(radius as i32) {
-            for dx in -(radius as i32)..=(radius as i32) {
-                let pos = GridPos::new(center.x + dx, center.y + dy);
-                if pos.in_bounds(self.width, self.height) {
-                    if center.distance(pos) <= radius {
-                        if let Some(tile) = self.get_mut(pos) {
-                            tile.revealed = true;
-                        }
-                    }
+        for tile_pos in
+            macroquad_toolkit::grid::tiles_in_radius(center.to_tile_pos(), radius as i32)
+        {
+            let pos = GridPos::from_tile_pos(tile_pos);
+            if pos.in_bounds(self.width, self.height) {
+                if let Some(tile) = self.get_mut(pos) {
+                    tile.revealed = true;
                 }
             }
         }
@@ -566,7 +578,6 @@ impl Grid {
         }
     }
 
-
     /// Find a conduit path that avoids blocked tiles
     pub fn find_conduit_path(&self, from: GridPos, to: GridPos) -> Option<Vec<GridPos>> {
         if from == to {
@@ -593,47 +604,27 @@ impl Grid {
             }
         };
 
-        let mut queue: VecDeque<GridPos> = VecDeque::new();
-        let mut came_from: HashMap<GridPos, GridPos> = HashMap::new();
-        queue.push_back(from);
-
-        while let Some(current) = queue.pop_front() {
-            for neighbor in current.neighbors() {
-                if !neighbor.in_bounds(self.width, self.height) {
-                    continue;
-                }
-                if came_from.contains_key(&neighbor) || neighbor == from {
-                    continue;
-                }
-                if !is_passable(neighbor, self) {
-                    continue;
-                }
-                came_from.insert(neighbor, current);
-                if neighbor == to {
-                    queue.clear();
-                    break;
-                }
-                queue.push_back(neighbor);
-            }
-        }
-
-        if !came_from.contains_key(&to) {
-            return None;
-        }
-
-        let mut reversed = Vec::new();
-        let mut current = to;
-        while current != from {
-            reversed.push(current);
-            current = *came_from.get(&current).unwrap();
-        }
-        reversed.reverse();
-        Some(reversed)
+        toolkit_bfs_path(
+            from.to_tile_pos(),
+            to.to_tile_pos(),
+            false,
+            |pos| GridPos::from_tile_pos(pos).in_bounds(self.width, self.height),
+            |pos| is_passable(GridPos::from_tile_pos(pos), self),
+        )
+        .map(|path| {
+            path.into_iter()
+                .skip(1)
+                .map(GridPos::from_tile_pos)
+                .collect()
+        })
     }
 
     /// Count total buildings on the grid
     pub fn total_buildings(&self) -> usize {
-        self.tiles.iter().filter(|tile| tile.building.is_some()).count()
+        self.tiles
+            .iter()
+            .filter(|tile| tile.building.is_some())
+            .count()
     }
 
     /// Update power grid connectivity using flood fill from Core
@@ -655,7 +646,8 @@ impl Grid {
         };
 
         // Flood fill from Core through power-transmitting buildings with repeater range
-        let mut best_distance: std::collections::HashMap<GridPos, u32> = std::collections::HashMap::new();
+        let mut best_distance: std::collections::HashMap<GridPos, u32> =
+            std::collections::HashMap::new();
         let mut queue = std::collections::VecDeque::new();
         queue.push_back((core_pos, 0u32));
         best_distance.insert(core_pos, 0u32);
@@ -675,7 +667,10 @@ impl Grid {
                 if let Some(ref building) = tile.building {
                     if building.is_dust_stalled() {
                         distance_since_repeater + 1
-                    } else if matches!(building.building_type, BuildingType::Core | BuildingType::PowerNode) {
+                    } else if matches!(
+                        building.building_type,
+                        BuildingType::Core | BuildingType::PowerNode
+                    ) {
                         0
                     } else {
                         distance_since_repeater + 1
@@ -714,11 +709,13 @@ impl Grid {
         }
 
         // Now mark buildings adjacent to powered conduits/nodes as powered
-        let powered_positions: Vec<GridPos> = self.tiles
+        let powered_positions: Vec<GridPos> = self
+            .tiles
             .iter()
             .enumerate()
             .filter_map(|(i, tile)| {
-                tile.building.as_ref()
+                tile.building
+                    .as_ref()
                     .filter(|b| b.powered && b.transmits_power() && !b.is_dust_stalled())
                     .map(|_| GridPos::from_index(i, self.width))
             })
@@ -790,27 +787,4 @@ impl Grid {
     }
 }
 
-struct TerrainRng {
-    state: u64,
-}
-
-impl TerrainRng {
-    fn new(seed: u64) -> Self {
-        let init = seed ^ 0x9E3779B97F4A7C15;
-        Self { state: init }
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut x = self.state;
-        x ^= x >> 12;
-        x ^= x << 25;
-        x ^= x >> 27;
-        self.state = x;
-        x.wrapping_mul(0x2545F4914F6CDD1D)
-    }
-
-    fn next_f32(&mut self) -> f32 {
-        let value = self.next_u64() >> 40;
-        (value as f32) / ((1u64 << 24) as f32)
-    }
-}
+type TerrainRng = SeededRng;

@@ -2,8 +2,8 @@
 //!
 //! This module re-exports UI utilities and defines game-specific widgets.
 
-mod core;
 mod components;
+mod core;
 
-pub use core::*;
 pub use components::*;
+pub use core::*;
