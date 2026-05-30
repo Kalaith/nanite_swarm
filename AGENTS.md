@@ -2,6 +2,8 @@
 
 This document guides AI coding agents for the **Nanite Swarm** project. It is derived from `.project/prd.md`, `.project/tech-stack.md`, and `CODE_STANDARDS.md`.
 
+This project uses the shared RustGames agent instructions in [`../AGENTS.md`](../AGENTS.md). Codex should read and apply that file when working here.
+
 ---
 
 ## Project Summary
