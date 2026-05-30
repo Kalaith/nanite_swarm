@@ -1,0 +1,39 @@
+{
+    "colors": {
+        "background": [0.015, 0.027, 0.035, 1.0],
+        "panel": [0.018, 0.075, 0.095, 0.92],
+        "panel_deep": [0.006, 0.025, 0.035, 0.96],
+        "panel_inner": [0.025, 0.11, 0.14, 0.78],
+        "border": [0.0, 0.56, 0.78, 0.55],
+        "border_bright": [0.0, 0.78, 1.0, 0.92],
+        "text": [0.82, 0.9, 0.96, 1.0],
+        "text_dim": [0.48, 0.64, 0.72, 1.0],
+        "primary": [0.0, 0.78, 1.0, 1.0],
+        "primary_soft": [0.13, 0.62, 0.82, 1.0],
+        "success": [0.31, 0.88, 0.5, 1.0],
+        "warning": [1.0, 0.62, 0.18, 1.0],
+        "error": [1.0, 0.24, 0.18, 1.0],
+        "energy": [1.0, 0.67, 0.19, 1.0],
+        "minerals": [0.14, 0.7, 1.0, 1.0],
+        "data": [0.18, 0.78, 1.0, 1.0],
+        "biomass": [0.47, 0.92, 0.32, 1.0],
+        "shadow": [0.0, 0.0, 0.0, 0.45]
+    },
+    "layout": {
+        "top_bar_height": 86.0,
+        "left_panel_width": 286.0,
+        "right_panel_width": 316.0,
+        "bottom_bar_height": 74.0,
+        "panel_gap": 10.0,
+        "panel_padding": 12.0,
+        "tile_size": 28.0,
+        "build_row_height": 76.0
+    },
+    "typography": {
+        "title": 20.0,
+        "section": 14.0,
+        "body": 12.0,
+        "small": 10.0,
+        "value": 22.0
+    }
+}

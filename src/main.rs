@@ -13,7 +13,7 @@ mod state;
 mod ui;
 
 use assets::GameTextures;
-use data::{load_game_config, load_game_data, set_game_data};
+use data::{load_game_config, load_game_data, load_ui_theme, set_game_data};
 use directives::{pick_directive, Directive};
 use engine::{ResearchState, ResearchTree};
 use screens::{
@@ -48,6 +48,7 @@ pub struct Game {
     directive_timer: f32,
     directive_tier: i32,
     config: data::GameConfig,
+    ui_theme: data::UiTheme,
 }
 
 const SAVE_PATH: &str = "save.json";
@@ -59,6 +60,11 @@ impl Game {
         let config = load_game_config();
         #[cfg(target_arch = "wasm32")]
         let config = load_game_config().await;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let ui_theme = load_ui_theme();
+        #[cfg(target_arch = "wasm32")]
+        let ui_theme = load_ui_theme().await;
 
         #[cfg(not(target_arch = "wasm32"))]
         let game_data = load_game_data();
@@ -81,6 +87,7 @@ impl Game {
             directive_timer: 0.0,
             directive_tier: 0,
             config,
+            ui_theme,
         }
     }
 
@@ -144,6 +151,7 @@ impl Game {
                     self.settings.show_fps,
                     &self.textures,
                     &self.directive,
+                    &self.ui_theme,
                 ) {
                     PlanetaryAction::OpenResearch => {
                         self.phase = GamePhase::Research;
