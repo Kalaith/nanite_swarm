@@ -1,128 +1,39 @@
-# AGENTS.md
+# RustGames Agent Instructions
 
-This document guides AI coding agents for the **Nanite Swarm** project. It is derived from `.project/prd.md`, `.project/tech-stack.md`, and `CODE_STANDARDS.md`.
+These instructions apply to all Rust game projects in this workspace.
 
-This project uses the shared RustGames agent instructions in [`../AGENTS.md`](../AGENTS.md). Codex should read and apply that file when working here.
+## Project Standards
 
----
+- Build games with Rust, `macroquad`, and the shared `macroquad-toolkit` by default.
+- Treat missing runtime, rendering, input, asset, or platform behavior as potential `macroquad-toolkit` upgrades before creating project-local alternatives.
+- Only diverge from the shared toolkit when an existing project has a clear, established alternative or the need is genuinely game-specific.
+- Keep source files under 800 lines. Split large files by responsibility before they become difficult to scan or test.
+- Prefer small modules with explicit ownership of input, update logic, rendering, assets, and game state.
+- Use Rust's named module source filenames (`foo.rs`, `foo/bar.rs`) instead of `foo/mod.rs`. Do not create new `mod.rs` files.
+- Keep gameplay logic deterministic where practical. Isolate randomness behind small helper functions or state-owned RNG.
+- Avoid broad refactors while making focused changes. Match the style, naming, and structure already present in each project.
+- Use clear error handling for asset loading, save/load, publishing, and platform integration.
+- Do not introduce new dependencies unless they remove real complexity or match an established project pattern.
 
-## Project Summary
+## Macroquad Conventions
 
-Nanite Swarm is a 2D grid-based automation and logistics game where a self?replicating AI consumes planetary resources. The MVP focuses on **Planet 1** with automation, spatial logistics puzzles, terrain tradeoffs, and research. Interplanetary progression is post?MVP.
+- Use `macroquad` for the runtime loop, input, drawing, textures, audio, and timing.
+- Keep drawing code separate from state mutation where possible.
+- Treat screen size, scaling, and camera transforms as first-class concerns. Games should remain playable at common desktop browser sizes.
+- Avoid hard-coded absolute positions unless they are intentionally tied to a fixed virtual resolution.
+- Load assets through project-local asset paths and keep missing asset behavior obvious during publishing.
 
-Core loop: **build ? automate ? research ? expand**
+## Testing And Validation
 
-Pressure systems (MVP): dust accumulation, power collapse cascade, and irreversible terrain consequences.
+- Use each project's `publish.ps1` script as the validation path.
+- Do not treat running a local instance or local dev server as the required test path unless the user explicitly asks for it.
+- After meaningful changes, run `.\publish.ps1` with no parameters from the affected project directory and report whether it passes.
+- If `publish.ps1` is missing, blocked, or fails for an unrelated environment reason, report that clearly instead of substituting an unrequested local run.
 
----
+## File Size Rule
 
-## Scope & Priorities
-
-### MVP (Planet 1)
-- Grid-based resource automation with drones
-- Non?overlapping conduits + bridges for water/void crossings
-- Power grid with repeaters and power constraints
-- Research tree with prerequisites and data generation
-- Terrain utilization tradeoffs (harvest vs preserve) with permanent consequences
-- Offline progression (battery + hibernation)
-
-### Post?MVP
-- Interplanetary persistence + resource transfer
-- Planet-specific hazards (acid rain, freeze, etc.)
-
----
-
-## Tech Stack (Do Not Deviate)
-
-- **Language:** Rust 2021
-- **Engine:** Macroquad
-- **UI:** macroquad?toolkit (immediate mode)
-- **Data:** JSON + Serde
-- **Targets:** WebGL/WASM + Native Windows
-
----
-
-## Architecture Rules
-
-- **main.rs** owns the game loop and state transitions
-- **data/** defines JSON?driven configuration (no engine/UI dependencies)
-- **engine/** is stateless logic and calculations
-- **state/** owns mutable game state
-- **screens/** render UI and return actions
-- **UI never mutates state directly**
-
----
-
-## Data?Driven Design (Hard Requirement)
-
-All balance values and constants must live in JSON under `assets/` and be loaded at startup. Do not introduce hardcoded tuning constants in Rust unless the JSON wiring is added.
-
----
-
-## Coding Standards (Key Enforcement)
-
-- No unused variables or fields (remove them; do not suppress)
-- Avoid variable shadowing
-- Prefer small functions (20?50 lines, max 100)
-- Use `Option`/`Result` for fallible work (avoid panics)
-- Comments explain **why**, not **what**
-
----
-
-## Current Implemented Systems
-
-- Grid + fog of war
-- Buildings: Core, Drill, Conduit, Bridge, Power Node, Wind Turbine, Server Bank, Sweeper, Storage, Biomass Harvester
-- Dust accumulation + countermeasures
-- Power collapse cascade (soft failure)
-- Forest filters + permanent terrain scars
-- Research tree (including unlock?gated buildings)
-- Short?term directives with rewards
-- Core micro?stage visuals
-- Procedural art generator
-
----
-
-## Development Workflow
-
-### Run
-```bash
-cargo run
-```
-
-### Generate Art
-```bash
-cargo run --bin build_graphics
-```
-
-### Web Build
-```bash
-cargo build --release --target wasm32-unknown-unknown
-```
-
----
-
-## Agent Behavior Guidelines
-
-- Respect the PRD scope: **do not** expand to post?MVP unless requested
-- Follow CODE_STANDARDS.md conventions
-- Keep all tuning numbers in `assets/game_config.json`
-- If adding a new system, update JSON config + data structs
-- Preserve existing UI style; no UI rewrites without explicit request
-
----
-
-## Key Files
-
-- `.project/prd.md`
-- `.project/tech-stack.md`
-- `CODE_STANDARDS.md`
-- `assets/game_config.json`
-- `src/main.rs`
-- `src/engine/`
-- `src/state/`
-- `src/screens/`
-
----
-
-*Last updated: 2026-01-26*
+- Keep every `.rs` file below 800 lines.
+- Treat a file reaching or approaching 800 lines as a restructure signal, not as a formatting target.
+- Do not preserve the limit by stripping useful spacing, compressing formatting, moving a single small function, or making other cosmetic line-count changes.
+- If a meaningful change would push a file over the limit, extract a cohesive responsibility into one or more nearby modules before or alongside the change.
+- If a touched file is already over 800 lines, make the restructure part of the current task, or queue it as the next work item before considering the task complete.
