@@ -104,7 +104,7 @@ impl Game {
                         "Mars",
                         24,
                         24,
-                        macroquad::rand::gen_range(0u64, u64::MAX),
+                        macroquad_toolkit::rng::random_u64(),
                         self.config.clone(),
                     );
                     self.research_state = ResearchState::default();
@@ -208,7 +208,7 @@ impl Game {
                                 planet_names[index],
                                 24,
                                 24,
-                                macroquad::rand::gen_range(0u64, u64::MAX),
+                                macroquad_toolkit::rng::random_u64(),
                                 self.config.clone(),
                             );
                             self.phase = GamePhase::Playing;
