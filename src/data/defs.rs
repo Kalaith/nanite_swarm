@@ -122,11 +122,13 @@ impl GameData {
     pub async fn load_async() -> Self {
         let buildings_json = load_string("assets/buildings.json")
             .await
-            .unwrap_or_default();
-        let terrain_json = load_string("assets/terrain.json").await.unwrap_or_default();
+            .unwrap_or_else(|_| include_str!("../../assets/buildings.json").to_string());
+        let terrain_json = load_string("assets/terrain.json")
+            .await
+            .unwrap_or_else(|_| include_str!("../../assets/terrain.json").to_string());
         let research_json = load_string("assets/research.json")
             .await
-            .unwrap_or_default();
+            .unwrap_or_else(|_| include_str!("../../assets/research.json").to_string());
 
         Self::from_json_strings(&buildings_json, &terrain_json, &research_json)
     }

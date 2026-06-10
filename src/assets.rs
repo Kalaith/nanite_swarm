@@ -2,7 +2,10 @@
 
 use crate::data;
 use macroquad::prelude::*;
+use macroquad_toolkit::assets::{load_texture_from_pack_or_file, AssetPack};
 use std::collections::HashMap;
+
+const ASSET_PACK_PATH: &str = "assets.zip";
 
 pub struct TerrainTextures {
     pub by_id: HashMap<String, Texture2D>,
@@ -40,9 +43,11 @@ pub struct GameTextures {
 
 impl GameTextures {
     pub async fn load() -> Self {
+        let asset_pack = AssetPack::load(ASSET_PACK_PATH).await.ok();
         let mut terrain_textures = HashMap::new();
         for def in &data::game_data().terrain {
-            let texture = load_texture(&def.texture).await.expect("terrain_texture");
+            let texture =
+                load_required_texture(asset_pack.as_ref(), &def.texture, "terrain_texture").await;
             terrain_textures.insert(def.id.clone(), texture);
         }
         let terrain = TerrainTextures {
@@ -51,14 +56,21 @@ impl GameTextures {
 
         let mut building_textures = HashMap::new();
         for def in &data::game_data().buildings {
-            let texture = load_texture(&def.texture).await.expect("building_texture");
+            let texture =
+                load_required_texture(asset_pack.as_ref(), &def.texture, "building_texture").await;
             building_textures.insert(def.id.clone(), texture);
         }
 
         let mut building_icon_textures = HashMap::new();
         for def in &data::game_data().buildings {
             let icon_path = def.icon.as_deref().unwrap_or(&def.texture);
-            let texture = match load_texture(icon_path).await {
+            let texture = match load_texture_from_pack_or_file(
+                asset_pack.as_ref(),
+                icon_path,
+                FilterMode::Nearest,
+            )
+            .await
+            {
                 Ok(texture) => texture,
                 Err(_) => {
                     println!("Icon missing for {}. Falling back to tile texture.", def.id);
@@ -73,66 +85,102 @@ impl GameTextures {
 
         let buildings = BuildingTextures {
             by_id: building_textures,
-            core_stage_1a: load_texture("assets/tiles/buildings/building_core_stage_1a.png")
-                .await
-                .expect("building_core_stage_1a"),
-            core_stage_1b: load_texture("assets/tiles/buildings/building_core_stage_1b.png")
-                .await
-                .expect("building_core_stage_1b"),
-            core_stage_1c: load_texture("assets/tiles/buildings/building_core_stage_1c.png")
-                .await
-                .expect("building_core_stage_1c"),
-            core_stage_2a: load_texture("assets/tiles/buildings/building_core_stage_2a.png")
-                .await
-                .expect("building_core_stage_2a"),
-            core_stage_2b: load_texture("assets/tiles/buildings/building_core_stage_2b.png")
-                .await
-                .expect("building_core_stage_2b"),
-            conduit_straight_h: load_texture(
+            core_stage_1a: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_core_stage_1a.png",
+                "building_core_stage_1a",
+            )
+            .await,
+            core_stage_1b: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_core_stage_1b.png",
+                "building_core_stage_1b",
+            )
+            .await,
+            core_stage_1c: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_core_stage_1c.png",
+                "building_core_stage_1c",
+            )
+            .await,
+            core_stage_2a: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_core_stage_2a.png",
+                "building_core_stage_2a",
+            )
+            .await,
+            core_stage_2b: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_core_stage_2b.png",
+                "building_core_stage_2b",
+            )
+            .await,
+            conduit_straight_h: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_straight_h.png",
+                "conduit_straight_h",
             )
-            .await
-            .expect("conduit_straight_h"),
-            conduit_straight_v: load_texture(
+            .await,
+            conduit_straight_v: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_straight_v.png",
+                "conduit_straight_v",
             )
-            .await
-            .expect("conduit_straight_v"),
-            conduit_corner_ne: load_texture(
+            .await,
+            conduit_corner_ne: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_corner_ne.png",
+                "conduit_corner_ne",
             )
-            .await
-            .expect("conduit_corner_ne"),
-            conduit_corner_nw: load_texture(
+            .await,
+            conduit_corner_nw: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_corner_nw.png",
+                "conduit_corner_nw",
             )
-            .await
-            .expect("conduit_corner_nw"),
-            conduit_corner_se: load_texture(
+            .await,
+            conduit_corner_se: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_corner_se.png",
+                "conduit_corner_se",
             )
-            .await
-            .expect("conduit_corner_se"),
-            conduit_corner_sw: load_texture(
+            .await,
+            conduit_corner_sw: load_required_texture(
+                asset_pack.as_ref(),
                 "assets/tiles/buildings/building_conduit_corner_sw.png",
+                "conduit_corner_sw",
             )
-            .await
-            .expect("conduit_corner_sw"),
-            conduit_tee_n: load_texture("assets/tiles/buildings/building_conduit_tee_n.png")
-                .await
-                .expect("conduit_tee_n"),
-            conduit_tee_e: load_texture("assets/tiles/buildings/building_conduit_tee_e.png")
-                .await
-                .expect("conduit_tee_e"),
-            conduit_tee_s: load_texture("assets/tiles/buildings/building_conduit_tee_s.png")
-                .await
-                .expect("conduit_tee_s"),
-            conduit_tee_w: load_texture("assets/tiles/buildings/building_conduit_tee_w.png")
-                .await
-                .expect("conduit_tee_w"),
-            conduit_cross: load_texture("assets/tiles/buildings/building_conduit_cross.png")
-                .await
-                .expect("conduit_cross"),
+            .await,
+            conduit_tee_n: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_conduit_tee_n.png",
+                "conduit_tee_n",
+            )
+            .await,
+            conduit_tee_e: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_conduit_tee_e.png",
+                "conduit_tee_e",
+            )
+            .await,
+            conduit_tee_s: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_conduit_tee_s.png",
+                "conduit_tee_s",
+            )
+            .await,
+            conduit_tee_w: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_conduit_tee_w.png",
+                "conduit_tee_w",
+            )
+            .await,
+            conduit_cross: load_required_texture(
+                asset_pack.as_ref(),
+                "assets/tiles/buildings/building_conduit_cross.png",
+                "conduit_cross",
+            )
+            .await,
         };
 
         let building_icons = BuildingIconTextures {
@@ -149,6 +197,16 @@ impl GameTextures {
             building_icons,
         }
     }
+}
+
+async fn load_required_texture(
+    asset_pack: Option<&AssetPack>,
+    path: &str,
+    label: &str,
+) -> Texture2D {
+    load_texture_from_pack_or_file(asset_pack, path, FilterMode::Nearest)
+        .await
+        .expect(label)
 }
 
 fn set_filter_nearest(terrain: &TerrainTextures) {

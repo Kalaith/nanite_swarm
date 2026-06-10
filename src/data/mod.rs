@@ -39,7 +39,7 @@ pub fn load_ui_theme() -> UiTheme {
 pub async fn load_game_config() -> GameConfig {
     let json = load_string("assets/game_config.json")
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|_| include_str!("../../assets/game_config.json").to_string());
     load_json(&json).unwrap_or_else(|_| GameConfig::default())
 }
 
@@ -47,7 +47,7 @@ pub async fn load_game_config() -> GameConfig {
 pub async fn load_ui_theme() -> UiTheme {
     let json = load_string("assets/ui_theme.json")
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|_| include_str!("../../assets/ui_theme.json").to_string());
     load_json(&json).unwrap_or_else(|_| UiTheme::default())
 }
 
