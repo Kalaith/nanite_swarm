@@ -3,6 +3,7 @@
 use super::core::{Colors, Dimensions};
 use crate::data::UiTheme;
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 use macroquad_toolkit::{input::is_hovered, ui::draw_text_centered_in_box};
 
 /// Draw a styled button and return true if clicked
@@ -113,7 +114,7 @@ pub fn draw_hud_panel(theme: &UiTheme, rect: Rect, title: Option<&str>) {
     );
 
     if let Some(text) = title {
-        draw_text(
+        draw_ui_text(
             text,
             rect.x + theme.layout.panel_padding,
             rect.y + 24.0,
@@ -268,18 +269,18 @@ pub fn draw_metric_card(
         theme.typography.value
     };
     let small_size = if compact { 9.0 } else { theme.typography.small };
-    draw_text(label, text_x, rect.y + 19.0, small_size, text);
+    draw_ui_text(label, text_x, rect.y + 19.0, small_size, text);
     let value_y = if rect.h < 65.0 {
         rect.y + 39.0
     } else {
         rect.y + 42.0
     };
     let footer_y = rect.y + rect.h - 7.0;
-    draw_text(value, text_x, value_y, value_size, text);
-    draw_text(rate, text_x, footer_y, small_size, accent);
+    draw_ui_text(value, text_x, value_y, value_size, text);
+    draw_ui_text(rate, text_x, footer_y, small_size, accent);
     if let Some(capacity_text) = capacity.filter(|_| rect.w >= 118.0) {
-        let cap_width = measure_text(capacity_text, None, small_size as u16, 1.0).width;
-        draw_text(
+        let cap_width = measure_ui_text(capacity_text, None, small_size as u16, 1.0).width;
+        draw_ui_text(
             capacity_text,
             rect.x + rect.w - cap_width - 10.0,
             footer_y,
@@ -299,16 +300,16 @@ pub fn draw_status_row(
     value_color: Color,
 ) {
     let label_color = color_from_rgba(&theme.colors.text_dim);
-    draw_text(label, x, y, theme.typography.body, label_color);
-    let value_width = measure_text(value, None, theme.typography.body as u16, 1.0).width;
+    draw_ui_text(label, x, y, theme.typography.body, label_color);
+    let value_width = measure_ui_text(value, None, theme.typography.body as u16, 1.0).width;
     let value_x = (x + width - value_width).max(x + width * 0.48);
-    draw_text(value, value_x, y, theme.typography.body, value_color);
+    draw_ui_text(value, value_x, y, theme.typography.body, value_color);
 }
 
 /// Draw resource display
 #[allow(dead_code)]
 pub fn draw_resource(x: f32, y: f32, label: &str, value: f32, color: Color) {
-    draw_text(
+    draw_ui_text(
         &format!("{}: {:.0}", label, value),
         x,
         y,

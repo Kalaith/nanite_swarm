@@ -3,6 +3,7 @@
 use crate::engine::{ResearchState, ResearchTree};
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 const NODE_RADIUS: f32 = 25.0;
 const GRID_SCALE: f32 = 100.0;
@@ -46,8 +47,8 @@ pub fn render_research_view(
 
     // Header
     draw_panel(0.0, 0.0, screen_w, HEADER_HEIGHT);
-    draw_text("Neural Network", 18.0, 30.0, 18.0, Colors::PRIMARY);
-    draw_text(
+    draw_ui_text("Neural Network", 18.0, 30.0, 18.0, Colors::PRIMARY);
+    draw_ui_text(
         &format!("Data {:.0}", data_available),
         18.0,
         52.0,
@@ -63,7 +64,7 @@ pub fn render_research_view(
     let left_panel_w = 280.0;
     let left_panel_h = screen_h - left_panel_y - 80.0;
     draw_panel(left_panel_x, left_panel_y, left_panel_w, left_panel_h);
-    draw_text(
+    draw_ui_text(
         "Research Intel",
         left_panel_x + 12.0,
         left_panel_y + 28.0,
@@ -76,7 +77,7 @@ pub fn render_research_view(
     let right_panel_y = HEADER_HEIGHT + 12.0;
     let right_panel_h = screen_h - right_panel_y - 80.0;
     draw_panel(right_panel_x, right_panel_y, right_panel_w, right_panel_h);
-    draw_text(
+    draw_ui_text(
         "Legend",
         right_panel_x + 12.0,
         right_panel_y + 28.0,
@@ -86,7 +87,7 @@ pub fn render_research_view(
 
     let mut left_text_y = left_panel_y + 56.0;
     if research_locked {
-        draw_text(
+        draw_ui_text(
             "Research Locked (power collapse)",
             left_panel_x + 12.0,
             left_text_y,
@@ -103,14 +104,14 @@ pub fn render_research_view(
             } else {
                 1.0
             };
-            draw_text(
+            draw_ui_text(
                 "Active Research",
                 left_panel_x + 12.0,
                 left_text_y,
                 12.0,
                 Colors::TEXT_DIM,
             );
-            draw_text(
+            draw_ui_text(
                 &node.name,
                 left_panel_x + 12.0,
                 left_text_y + 18.0,
@@ -142,7 +143,7 @@ pub fn render_research_view(
             left_text_y += 60.0;
         }
     } else {
-        draw_text(
+        draw_ui_text(
             "No research selected.",
             left_panel_x + 12.0,
             left_text_y,
@@ -265,7 +266,7 @@ pub fn render_research_view(
                 2.0,
                 Colors::PRIMARY,
             );
-            draw_text(
+            draw_ui_text(
                 &node.name,
                 node_x - 22.0,
                 node_y - NODE_RADIUS - 12.0,
@@ -276,13 +277,13 @@ pub fn render_research_view(
 
         // Draw abbreviated name
         let abbrev = &node.name[..node.name.len().min(7)];
-        let text_size = measure_text(abbrev, None, 12, 1.0);
+        let text_size = measure_ui_text(abbrev, None, 12, 1.0);
         let text_color = if is_unlocked {
             Colors::BACKGROUND
         } else {
             Colors::TEXT
         };
-        draw_text(
+        draw_ui_text(
             abbrev,
             node_x - text_size.width / 2.0,
             node_y + 4.0,
@@ -298,7 +299,7 @@ pub fn render_research_view(
             } else {
                 Colors::TEXT_DIM
             };
-            draw_text(
+            draw_ui_text(
                 &cost_str,
                 node_x - 10.0,
                 node_y + NODE_RADIUS + 15.0,
@@ -311,21 +312,21 @@ pub fn render_research_view(
     // Info panel for hovered node
     if let Some(node_id) = hovered_node {
         if let Some(node) = research_tree.get_node(node_id) {
-            draw_text(
+            draw_ui_text(
                 "Hovered Node",
                 left_panel_x + 12.0,
                 left_text_y,
                 12.0,
                 Colors::TEXT_DIM,
             );
-            draw_text(
+            draw_ui_text(
                 &node.name,
                 left_panel_x + 12.0,
                 left_text_y + 18.0,
                 14.0,
                 Colors::TEXT,
             );
-            draw_text(
+            draw_ui_text(
                 &node.description,
                 left_panel_x + 12.0,
                 left_text_y + 36.0,
@@ -335,7 +336,7 @@ pub fn render_research_view(
 
             if !research_state.is_unlocked(node_id) {
                 let cost_text = format!("Cost {:.0} Data", node.data_cost);
-                draw_text(
+                draw_ui_text(
                     &cost_text,
                     left_panel_x + 12.0,
                     left_text_y + 54.0,
@@ -346,7 +347,7 @@ pub fn render_research_view(
                 if research_tree.can_select(node_id, &research_state.unlocked) {
                     if research_tree.can_research(node_id, &research_state.unlocked, data_available)
                     {
-                        draw_text(
+                        draw_ui_text(
                             "Click to research",
                             left_panel_x + 12.0,
                             left_text_y + 72.0,
@@ -354,7 +355,7 @@ pub fn render_research_view(
                             Colors::SUCCESS,
                         );
                     } else {
-                        draw_text(
+                        draw_ui_text(
                             "Click to select (insufficient Data)",
                             left_panel_x + 12.0,
                             left_text_y + 72.0,
@@ -367,7 +368,7 @@ pub fn render_research_view(
                     .iter()
                     .all(|p| research_state.is_unlocked(p))
                 {
-                    draw_text(
+                    draw_ui_text(
                         "Prerequisites not met",
                         left_panel_x + 12.0,
                         left_text_y + 72.0,
@@ -375,7 +376,7 @@ pub fn render_research_view(
                         Colors::ERROR,
                     );
                 } else {
-                    draw_text(
+                    draw_ui_text(
                         "Not enough Data",
                         left_panel_x + 12.0,
                         left_text_y + 72.0,
@@ -384,7 +385,7 @@ pub fn render_research_view(
                     );
                 }
             } else {
-                draw_text(
+                draw_ui_text(
                     "UNLOCKED",
                     left_panel_x + 12.0,
                     left_text_y + 60.0,
@@ -394,7 +395,7 @@ pub fn render_research_view(
             }
         }
     } else {
-        draw_text(
+        draw_ui_text(
             "Hover a node to inspect.",
             left_panel_x + 12.0,
             left_text_y,
@@ -404,7 +405,7 @@ pub fn render_research_view(
     }
 
     // Legend
-    draw_text(
+    draw_ui_text(
         "Unlocked",
         right_panel_x + 12.0,
         right_panel_y + 56.0,
@@ -417,7 +418,7 @@ pub fn render_research_view(
         6.0,
         Colors::PRIMARY,
     );
-    draw_text(
+    draw_ui_text(
         "In Progress",
         right_panel_x + 12.0,
         right_panel_y + 98.0,
@@ -430,7 +431,7 @@ pub fn render_research_view(
         6.0,
         Colors::WARNING,
     );
-    draw_text(
+    draw_ui_text(
         "Available",
         right_panel_x + 12.0,
         right_panel_y + 140.0,
@@ -443,7 +444,7 @@ pub fn render_research_view(
         6.0,
         Colors::SUCCESS,
     );
-    draw_text(
+    draw_ui_text(
         "Locked",
         right_panel_x + 12.0,
         right_panel_y + 182.0,
@@ -458,7 +459,7 @@ pub fn render_research_view(
     );
 
     // Instructions
-    draw_text(
+    draw_ui_text(
         "Press ESC to return",
         20.0,
         screen_h - 20.0,

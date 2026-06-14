@@ -2,6 +2,7 @@
 
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::draw_ui_text;
 
 /// Planet data for the solar system
 #[derive(Debug, Clone)]
@@ -105,14 +106,14 @@ pub fn render_interplanetary_view(
 
     // Header
     draw_panel(0.0, 0.0, screen_w, header_height);
-    draw_text("Solar System", 18.0, 30.0, 18.0, Colors::PRIMARY);
-    draw_text("Planetary Map", 18.0, 52.0, 12.0, Colors::TEXT_DIM);
+    draw_ui_text("Solar System", 18.0, 30.0, 18.0, Colors::PRIMARY);
+    draw_ui_text("Planetary Map", 18.0, 52.0, 12.0, Colors::TEXT_DIM);
     if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
         return InterplanetaryAction::Close;
     }
 
     if has_mass_driver {
-        draw_text(
+        draw_ui_text(
             "Mass Driver: ONLINE",
             screen_w - 320.0,
             50.0,
@@ -120,7 +121,7 @@ pub fn render_interplanetary_view(
             Colors::SUCCESS,
         );
     } else {
-        draw_text(
+        draw_ui_text(
             "Mass Driver: OFFLINE",
             screen_w - 320.0,
             50.0,
@@ -148,7 +149,7 @@ pub fn render_interplanetary_view(
     let list_w = 220.0;
     let list_h = screen_h - list_y - 80.0;
     draw_panel(list_x, list_y, list_w, list_h);
-    draw_text(
+    draw_ui_text(
         "Planets",
         list_x + 12.0,
         list_y + 28.0,
@@ -166,7 +167,7 @@ pub fn render_interplanetary_view(
         } else {
             Colors::TEXT_DIM
         };
-        draw_text(planet.name, list_x + 12.0, list_row_y, 13.0, label_color);
+        draw_ui_text(planet.name, list_x + 12.0, list_row_y, 13.0, label_color);
         list_row_y += 20.0;
     }
 
@@ -222,7 +223,7 @@ pub fn render_interplanetary_view(
         } else {
             Colors::TEXT_DIM
         };
-        draw_text(
+        draw_ui_text(
             planet.name,
             px - 20.0,
             py + planet_size + 15.0,
@@ -243,21 +244,21 @@ pub fn render_interplanetary_view(
         let panel_y = header_height + 12.0;
         draw_panel(panel_x, panel_y, panel_w, panel_h);
 
-        draw_text(
+        draw_ui_text(
             planet.name,
             panel_x + 15.0,
             panel_y + 30.0,
             20.0,
             planet.color,
         );
-        draw_text(
+        draw_ui_text(
             planet.description,
             panel_x + 15.0,
             panel_y + 55.0,
             13.0,
             Colors::TEXT,
         );
-        draw_text(
+        draw_ui_text(
             planet.difficulty,
             panel_x + 15.0,
             panel_y + 75.0,
@@ -266,7 +267,7 @@ pub fn render_interplanetary_view(
         );
 
         if is_colonized {
-            draw_text(
+            draw_ui_text(
                 "Status: COLONIZED",
                 panel_x + 15.0,
                 panel_y + 105.0,
@@ -274,7 +275,7 @@ pub fn render_interplanetary_view(
                 Colors::SUCCESS,
             );
         } else {
-            draw_text(
+            draw_ui_text(
                 "Status: Unexplored",
                 panel_x + 15.0,
                 panel_y + 105.0,
@@ -284,7 +285,7 @@ pub fn render_interplanetary_view(
         }
 
         if is_current {
-            draw_text(
+            draw_ui_text(
                 "(Current Location)",
                 panel_x + 15.0,
                 panel_y + 125.0,
@@ -292,7 +293,7 @@ pub fn render_interplanetary_view(
                 Colors::PRIMARY,
             );
         } else if has_mass_driver && !is_colonized {
-            draw_text(
+            draw_ui_text(
                 "Click to launch probe",
                 panel_x + 15.0,
                 panel_y + 150.0,
@@ -300,7 +301,7 @@ pub fn render_interplanetary_view(
                 Colors::SUCCESS,
             );
         } else if !has_mass_driver && !is_colonized {
-            draw_text(
+            draw_ui_text(
                 "Requires: Mass Driver",
                 panel_x + 15.0,
                 panel_y + 150.0,
@@ -308,7 +309,7 @@ pub fn render_interplanetary_view(
                 Colors::ERROR,
             );
         } else if is_colonized && !is_current {
-            draw_text(
+            draw_ui_text(
                 "Click to travel",
                 panel_x + 15.0,
                 panel_y + 150.0,
@@ -330,7 +331,7 @@ pub fn render_interplanetary_view(
     // Legend
     draw_panel(screen_w - 190.0, screen_h - 110.0, 180.0, 100.0);
     draw_circle(screen_w - 175.0, screen_h - 85.0, 6.0, Colors::SUCCESS);
-    draw_text(
+    draw_ui_text(
         "Colonized",
         screen_w - 160.0,
         screen_h - 80.0,
@@ -338,7 +339,7 @@ pub fn render_interplanetary_view(
         Colors::TEXT_DIM,
     );
     draw_circle(screen_w - 175.0, screen_h - 65.0, 6.0, Colors::WARNING);
-    draw_text(
+    draw_ui_text(
         "Unexplored",
         screen_w - 160.0,
         screen_h - 60.0,
@@ -346,7 +347,7 @@ pub fn render_interplanetary_view(
         Colors::TEXT_DIM,
     );
     draw_circle(screen_w - 175.0, screen_h - 45.0, 6.0, Colors::PRIMARY);
-    draw_text(
+    draw_ui_text(
         "Current",
         screen_w - 160.0,
         screen_h - 40.0,
@@ -355,7 +356,7 @@ pub fn render_interplanetary_view(
     );
 
     // Instructions
-    draw_text(
+    draw_ui_text(
         "Press ESC to return | M to toggle map",
         20.0,
         screen_h - 20.0,

@@ -2,6 +2,7 @@
 
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::draw_ui_text;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SettingsAction {
@@ -37,8 +38,8 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     let header_height = 72.0;
 
     draw_panel(0.0, 0.0, screen_w, header_height);
-    draw_text("Settings", 18.0, 30.0, 18.0, Colors::PRIMARY);
-    draw_text("Audio & Display", 18.0, 52.0, 12.0, Colors::TEXT_DIM);
+    draw_ui_text("Settings", 18.0, 30.0, 18.0, Colors::PRIMARY);
+    draw_ui_text("Audio & Display", 18.0, 52.0, 12.0, Colors::TEXT_DIM);
 
     if draw_button_sized(screen_w - 110.0, 18.0, 80.0, 34.0, "Back") {
         return SettingsAction::Back;
@@ -51,7 +52,7 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     let display_x = screen_w * 0.5 + 20.0;
 
     draw_panel(audio_x, panel_y, panel_w, panel_h);
-    draw_text(
+    draw_ui_text(
         "Audio",
         audio_x + 16.0,
         panel_y + 28.0,
@@ -60,8 +61,8 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     );
 
     let mut row_y = panel_y + 70.0;
-    draw_text("Music Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_text(
+    draw_ui_text("Music Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
+    draw_ui_text(
         &format!("{:.0}%", settings.music_volume * 100.0),
         audio_x + 200.0,
         row_y,
@@ -75,8 +76,8 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
         settings.music_volume = (settings.music_volume + 0.1).min(1.0);
     }
     row_y += 50.0;
-    draw_text("SFX Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_text(
+    draw_ui_text("SFX Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
+    draw_ui_text(
         &format!("{:.0}%", settings.sfx_volume * 100.0),
         audio_x + 200.0,
         row_y,
@@ -91,7 +92,7 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     }
 
     draw_panel(display_x, panel_y, panel_w, panel_h);
-    draw_text(
+    draw_ui_text(
         "Display",
         display_x + 16.0,
         panel_y + 28.0,
@@ -100,14 +101,14 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     );
 
     let mut display_row_y = panel_y + 70.0;
-    draw_text(
+    draw_ui_text(
         "UI Scale",
         display_x + 16.0,
         display_row_y,
         14.0,
         Colors::TEXT,
     );
-    draw_text(
+    draw_ui_text(
         &format!("{:.2}x", settings.ui_scale),
         display_x + 200.0,
         display_row_y,
@@ -137,7 +138,7 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
         settings.show_fps = !settings.show_fps;
     }
 
-    draw_text(
+    draw_ui_text(
         "Press ESC to return",
         20.0,
         screen_h - 20.0,

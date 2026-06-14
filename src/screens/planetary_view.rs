@@ -10,6 +10,7 @@ use crate::ui::{
     draw_status_row, Colors,
 };
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 #[derive(Debug, Clone, Copy)]
 struct HudMetrics {
@@ -168,7 +169,7 @@ fn dust_status(dust: f32) -> (&'static str, Color) {
 }
 
 fn fit_text_to_width(text: &str, max_width: f32, font_size: f32) -> String {
-    let metrics = measure_text(text, None, font_size as u16, 1.0);
+    let metrics = measure_ui_text(text, None, font_size as u16, 1.0);
     if metrics.width <= max_width {
         return text.to_string();
     }
@@ -177,7 +178,7 @@ fn fit_text_to_width(text: &str, max_width: f32, font_size: f32) -> String {
     while !trimmed.is_empty() {
         trimmed.pop();
         let candidate = format!("{}...", trimmed);
-        let metrics = measure_text(&candidate, None, font_size as u16, 1.0);
+        let metrics = measure_ui_text(&candidate, None, font_size as u16, 1.0);
         if metrics.width <= max_width {
             return candidate;
         }
@@ -286,7 +287,7 @@ fn draw_build_row(
     let name_x = icon_x + icon_size + 10.0;
     let name_text = fit_text_to_width(building_type.name(), width - 138.0, theme.typography.body);
     let name_color = if unlocked && can_afford { text } else { dim };
-    draw_text(
+    draw_ui_text(
         &name_text,
         name_x,
         y + 20.0,
@@ -297,8 +298,8 @@ fn draw_build_row(
     if let Some(hotkey) = building_type.hotkey() {
         let hotkey_text = format!("[{}]", hotkey);
         let hotkey_width =
-            measure_text(&hotkey_text, None, theme.typography.small as u16, 1.0).width;
-        draw_text(
+            measure_ui_text(&hotkey_text, None, theme.typography.small as u16, 1.0).width;
+        draw_ui_text(
             &hotkey_text,
             x + width - hotkey_width - 10.0,
             y + 20.0,
@@ -312,7 +313,7 @@ fn draw_build_row(
         width - 92.0,
         theme.typography.small,
     );
-    draw_text(&description, name_x, y + 38.0, theme.typography.small, dim);
+    draw_ui_text(&description, name_x, y + 38.0, theme.typography.small, dim);
 
     let cost_y = y + 60.0;
     let minerals_text = format!("M {}", mineral_cost as i32);
@@ -328,7 +329,7 @@ fn draw_build_row(
         color_from_rgba(&theme.colors.error)
     };
 
-    draw_text(
+    draw_ui_text(
         &minerals_text,
         name_x,
         cost_y,
@@ -336,8 +337,8 @@ fn draw_build_row(
         mineral_value_color,
     );
     let minerals_width =
-        measure_text(&minerals_text, None, theme.typography.small as u16, 1.0).width;
-    draw_text(
+        measure_ui_text(&minerals_text, None, theme.typography.small as u16, 1.0).width;
+    draw_ui_text(
         &energy_text,
         name_x + minerals_width + 12.0,
         cost_y,
@@ -346,8 +347,8 @@ fn draw_build_row(
     );
 
     let power_text = format!("P {}", format_power_delta(building_type.power_delta()));
-    let power_width = measure_text(&power_text, None, theme.typography.small as u16, 1.0).width;
-    draw_text(
+    let power_width = measure_ui_text(&power_text, None, theme.typography.small as u16, 1.0).width;
+    draw_ui_text(
         &power_text,
         x + width - power_width - 8.0,
         cost_y,
@@ -356,7 +357,7 @@ fn draw_build_row(
     );
 
     if !unlocked {
-        draw_text(
+        draw_ui_text(
             "LOCKED",
             name_x,
             y + height - 8.0,
@@ -773,7 +774,7 @@ pub fn render_planetary_view(
 
                 // Unpowered indicator
                 if !building.powered && building.building_type != BuildingType::Core {
-                    draw_text("!", px + 18.0, py + 10.0, 12.0, Colors::ERROR);
+                    draw_ui_text("!", px + 18.0, py + 10.0, 12.0, Colors::ERROR);
                 }
             }
 
@@ -1019,8 +1020,8 @@ fn draw_ui_panels(
         theme.typography.title
     };
     let brand_w = (screen_w * 0.18).clamp(188.0, 318.0);
-    draw_text("NANITE SWARM", 66.0, 31.0, title_size, primary);
-    draw_text(
+    draw_ui_text("NANITE SWARM", 66.0, 31.0, title_size, primary);
+    draw_ui_text(
         &format!("{} SECTOR 7-B", state.name.to_uppercase()),
         66.0,
         55.0,
@@ -1131,7 +1132,7 @@ fn draw_ui_panels(
         ui_action = PlanetaryAction::OpenMenu;
     }
 
-    draw_text(
+    draw_ui_text(
         &format!("Power {:+.0}/s", state.power_balance),
         action_x + 2.0,
         62.0,
@@ -1139,7 +1140,7 @@ fn draw_ui_panels(
         power_color,
     );
     let (hours, minutes) = state.battery_time_left();
-    draw_text(
+    draw_ui_text(
         &format!("Battery {}h {}m", hours, minutes),
         action_x + actions_w * 0.36,
         62.0,
@@ -1147,7 +1148,7 @@ fn draw_ui_panels(
         primary_soft,
     );
     if state.battery_seconds <= 0.0 {
-        draw_text(
+        draw_ui_text(
             "HIBERNATION",
             action_x + actions_w * 0.7,
             62.0,
@@ -1158,7 +1159,7 @@ fn draw_ui_panels(
 
     if show_fps {
         let fps = get_fps();
-        draw_text(
+        draw_ui_text(
             &format!("FPS {}", fps),
             screen_w - 80.0,
             80.0,
@@ -1184,7 +1185,7 @@ fn draw_ui_panels(
             "Offline {}h {}m | Simulated {}h {}m",
             off_h, off_m, sim_h, sim_m
         );
-        draw_text(
+        draw_ui_text(
             &banner_text,
             banner_x + 16.0,
             banner_y + 24.0,
@@ -1203,7 +1204,7 @@ fn draw_ui_panels(
             Rect::new(banner_x, banner_y, banner_w, banner_h),
             None,
         );
-        draw_text(
+        draw_ui_text(
             "POWER COLLAPSE: drones offline, data corrupted, research locked",
             banner_x + 16.0,
             banner_y + 24.0,
@@ -1222,7 +1223,7 @@ fn draw_ui_panels(
         Rect::new(sidebar_x, sidebar_y, sidebar_w, sidebar_h),
         Some("BUILD PALETTE"),
     );
-    draw_text(
+    draw_ui_text(
         "Drag or click to build",
         sidebar_x + metrics.panel_padding,
         sidebar_y + 50.0,
@@ -1330,7 +1331,7 @@ fn draw_ui_panels(
     ) {
         state.clear_selection();
     }
-    draw_text(
+    draw_ui_text(
         "[H] Harvest terrain  [F] Forest filter",
         sidebar_x + metrics.panel_padding,
         quick_actions_y + 48.0,
@@ -1433,8 +1434,8 @@ fn draw_ui_panels(
             );
         }
         let info_x = icon_rect.x + icon_rect.w + 14.0;
-        draw_text(building_type.name(), info_x, header_y + 16.0, 13.0, text);
-        draw_text(
+        draw_ui_text(building_type.name(), info_x, header_y + 16.0, 13.0, text);
+        draw_ui_text(
             "Tier 1",
             right_x + right_w - 56.0,
             header_y + 16.0,
@@ -1446,7 +1447,7 @@ fn draw_ui_panels(
             right_x + right_w - info_x - 14.0,
             10.0,
         );
-        draw_text(&description, info_x, header_y + 40.0, 10.0, dim);
+        draw_ui_text(&description, info_x, header_y + 40.0, 10.0, dim);
         let output = format_power_delta(building_type.power_delta());
         let row_base = inspector_y + inspector_h - 62.0;
         draw_status_row(
@@ -1503,7 +1504,7 @@ fn draw_ui_panels(
             }
         }
     } else {
-        draw_text(
+        draw_ui_text(
             "NO STRUCTURE",
             right_x + 16.0,
             inspector_y + 56.0,
@@ -1511,7 +1512,7 @@ fn draw_ui_panels(
             text,
         );
         if let Some(terrain) = tile_terrain {
-            draw_text(
+            draw_ui_text(
                 &format!("Terrain: {}", terrain.name()),
                 right_x + 16.0,
                 inspector_y + 82.0,
@@ -1525,7 +1526,7 @@ fn draw_ui_panels(
                 } else {
                     format!("Harvest +{} biomass", biomass as i32)
                 };
-                draw_text(
+                draw_ui_text(
                     &reward_text,
                     right_x + 16.0,
                     inspector_y + 106.0,
@@ -1534,7 +1535,7 @@ fn draw_ui_panels(
                 );
                 if let Some(bonus) = tile_bonus {
                     let bonus_text = fit_text_to_width(bonus, right_w - 32.0, 10.0);
-                    draw_text(
+                    draw_ui_text(
                         &bonus_text,
                         right_x + 16.0,
                         inspector_y + 126.0,
@@ -1544,7 +1545,7 @@ fn draw_ui_panels(
                 }
             }
         } else {
-            draw_text(
+            draw_ui_text(
                 "Hover a tile or select a build option.",
                 right_x + 16.0,
                 inspector_y + 82.0,
@@ -1592,7 +1593,7 @@ fn draw_ui_panels(
     );
     let battery_ratio = (state.battery_seconds / (4.0 * 60.0 * 60.0)).clamp(0.0, 1.0);
     let battery_y = power_y + power_h - 22.0;
-    draw_text("Battery", right_x + 12.0, battery_y + 10.0, 10.0, dim);
+    draw_ui_text("Battery", right_x + 12.0, battery_y + 10.0, 10.0, dim);
     draw_hud_progress_bar(
         theme,
         Rect::new(right_x + 86.0, battery_y, right_w - 108.0, 10.0),
@@ -1643,7 +1644,7 @@ fn draw_ui_panels(
     );
     let directive_text = fit_text_to_width(&directive.description, right_w - 28.0, 11.0);
     let directive_text_y = directive_y + if directive_h < 112.0 { 48.0 } else { 56.0 };
-    draw_text(
+    draw_ui_text(
         &directive_text,
         right_x + 12.0,
         directive_text_y,
@@ -1673,7 +1674,7 @@ fn draw_ui_panels(
         primary_soft,
     );
     if !state.tutorial_done && !state.tutorial_hidden && directive_h >= 122.0 {
-        draw_text(
+        draw_ui_text(
             &format!(
                 "Tutorial step {} / 5",
                 state.tutorial_step.saturating_add(1).min(5)
@@ -1711,8 +1712,8 @@ fn draw_ui_panels(
     let alert_count = i32::from(state.power_balance < 0.0)
         + i32::from(state.battery_seconds <= 0.0)
         + i32::from(state.power_collapse_shutdown > 0.0);
-    draw_text("ALERTS", 30.0, bottom_y + 31.0, 12.0, warning);
-    draw_text(
+    draw_ui_text("ALERTS", 30.0, bottom_y + 31.0, 12.0, warning);
+    draw_ui_text(
         &format!("{}", alert_count),
         52.0,
         bottom_y + metrics.bottom_bar_height - 17.0,
@@ -1732,7 +1733,7 @@ fn draw_ui_panels(
     } else {
         "SYSTEM NOMINAL"
     };
-    draw_text(
+    draw_ui_text(
         alert_text,
         106.0,
         bottom_y + 35.0,
@@ -1783,8 +1784,8 @@ fn draw_ui_panels(
     let slot_w = controls_w / controls.len() as f32;
     for (index, (label, hint)) in controls.iter().enumerate() {
         let x = controls_x + index as f32 * slot_w + 12.0;
-        draw_text(label, x, control_y, 10.0, text);
-        draw_text(hint, x, control_y + 18.0, 9.0, dim);
+        draw_ui_text(label, x, control_y, 10.0, text);
+        draw_ui_text(hint, x, control_y + 18.0, 9.0, dim);
         if index > 0 {
             let divider_x = controls_x + index as f32 * slot_w;
             draw_line(
@@ -1812,8 +1813,8 @@ fn draw_ui_panels(
     let time_h = time_seconds / 3600;
     let time_m = (time_seconds % 3600) / 60;
     let time_s = time_seconds % 60;
-    draw_text("MISSION TIME", status_x + 22.0, bottom_y + 27.0, 9.0, dim);
-    draw_text(
+    draw_ui_text("MISSION TIME", status_x + 22.0, bottom_y + 27.0, 9.0, dim);
+    draw_ui_text(
         &format!("{:02}:{:02}:{:02}", time_h, time_m, time_s),
         status_x + 22.0,
         bottom_y + 52.0,
@@ -1821,8 +1822,8 @@ fn draw_ui_panels(
         text,
     );
     let speed_x = status_x + status_w * 0.36;
-    draw_text("GAME SPEED", speed_x, bottom_y + 27.0, 9.0, dim);
-    draw_text("1.0x", speed_x + 10.0, bottom_y + 52.0, 16.0, text);
+    draw_ui_text("GAME SPEED", speed_x, bottom_y + 27.0, 9.0, dim);
+    draw_ui_text("1.0x", speed_x + 10.0, bottom_y + 52.0, 16.0, text);
     draw_hud_button(
         theme,
         Rect::new(speed_x - 30.0, bottom_y + 34.0, 24.0, 24.0),
@@ -1868,7 +1869,7 @@ fn draw_ui_panels(
     }
 
     let mode_y = bottom_y + metrics.bottom_bar_height - 8.0;
-    draw_text(
+    draw_ui_text(
         if state.selected_building.is_some() {
             "BUILD MODE"
         } else {
@@ -1880,7 +1881,7 @@ fn draw_ui_panels(
         primary_soft,
     );
     if let Some(selected) = state.selected_building {
-        draw_text(selected.name(), controls_x + 86.0, mode_y, 9.0, text);
+        draw_ui_text(selected.name(), controls_x + 86.0, mode_y, 9.0, text);
     }
 
     // Help overlay
@@ -1894,49 +1895,49 @@ fn draw_ui_panels(
             Rect::new(help_x, help_y, help_w, help_h),
             Some("HELP & CONTROLS"),
         );
-        draw_text(
+        draw_ui_text(
             "Left Click / Drag: Place building",
             help_x + 16.0,
             help_y + 55.0,
             14.0,
             text,
         );
-        draw_text(
+        draw_ui_text(
             "Right Click: Cancel selection / Harvest",
             help_x + 16.0,
             help_y + 75.0,
             14.0,
             text,
         );
-        draw_text(
+        draw_ui_text(
             "H: Harvest terrain",
             help_x + 16.0,
             help_y + 95.0,
             14.0,
             text,
         );
-        draw_text(
+        draw_ui_text(
             "R: Research  |  M: Map",
             help_x + 16.0,
             help_y + 115.0,
             14.0,
             text,
         );
-        draw_text(
+        draw_ui_text(
             "1-9: Select buildings",
             help_x + 16.0,
             help_y + 135.0,
             14.0,
             text,
         );
-        draw_text(
+        draw_ui_text(
             "F: Convert forest to filter",
             help_x + 16.0,
             help_y + 155.0,
             14.0,
             text,
         );
-        draw_text("F1: Toggle help", help_x + 16.0, help_y + 175.0, 14.0, dim);
+        draw_ui_text("F1: Toggle help", help_x + 16.0, help_y + 175.0, 14.0, dim);
     }
 
     ui_action

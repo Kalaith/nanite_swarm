@@ -2,6 +2,7 @@
 
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 /// Actions that can be taken from the main menu
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -40,13 +41,13 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
 
     // Title
     let title = "NANITE SWARM";
-    let _title_size = measure_text(title, None, 48, 1.0);
-    draw_text(title, 40.0, 80.0 + float_y, 48.0, Colors::PRIMARY);
+    let _title_size = measure_ui_text(title, None, 48, 1.0);
+    draw_ui_text(title, 40.0, 80.0 + float_y, 48.0, Colors::PRIMARY);
 
     // Subtitle
     let subtitle = "Consume. Evolve. Expand.";
-    let _sub_size = measure_text(subtitle, None, Dimensions::FONT_SIZE_NORMAL as u16, 1.0);
-    draw_text(
+    let _sub_size = measure_ui_text(subtitle, None, Dimensions::FONT_SIZE_NORMAL as u16, 1.0);
+    draw_ui_text(
         subtitle,
         40.0,
         110.0 + float_y * 0.5,
@@ -60,35 +61,35 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
     let briefing_x = 40.0;
     let briefing_y = 160.0;
     draw_panel(briefing_x, briefing_y, briefing_w, briefing_h);
-    draw_text(
+    draw_ui_text(
         "Mission Briefing",
         briefing_x + 16.0,
         briefing_y + 28.0,
         18.0,
         Colors::PRIMARY,
     );
-    draw_text(
+    draw_ui_text(
         "Build a self-sustaining nanite colony.",
         briefing_x + 16.0,
         briefing_y + 58.0,
         13.0,
         Colors::TEXT,
     );
-    draw_text(
+    draw_ui_text(
         "Expand power, automate drills, and research.",
         briefing_x + 16.0,
         briefing_y + 78.0,
         12.0,
         Colors::TEXT_DIM,
     );
-    draw_text(
+    draw_ui_text(
         "Short sprints. Clear milestones.",
         briefing_x + 16.0,
         briefing_y + 98.0,
         12.0,
         Colors::TEXT_DIM,
     );
-    draw_text(
+    draw_ui_text(
         "Tip: Click building cards to enter build mode.",
         briefing_x + 16.0,
         briefing_y + 130.0,
@@ -102,7 +103,7 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
     let panel_x = screen_w - panel_w - 60.0;
     let panel_y = screen_h * 0.3 + float_y * 0.2;
     draw_panel(panel_x, panel_y, panel_w, panel_h);
-    draw_text(
+    draw_ui_text(
         "Command Menu",
         panel_x + 18.0,
         panel_y + 30.0,
