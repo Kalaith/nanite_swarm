@@ -29,3 +29,10 @@ Grow the nanite core from a small foothold into a planetary-scale swarm without 
 ## Current Scope
 
 Playable automation and grid-management loop with harvesting, power, drones, research, terrain consequences, and collapse pressure.
+# Practical Future Improvements
+
+- Add deterministic snapshots for terrain harvesting, power failures, drone routing, research unlocks, and collapse pressure.
+- Stress-test drone routing and conduit networks under congested maps and interplanetary transitions.
+- Move building, research, terrain, and dust tuning into validated fixtures for safer automation balance changes.
+- Separate grid simulation from UI views so planetary and interplanetary screens can share consistent derived state.
+
