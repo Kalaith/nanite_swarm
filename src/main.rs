@@ -2,6 +2,8 @@
 //!
 //! Entry point, game loop, and phase transitions.
 
+#![allow(clippy::too_many_arguments, clippy::wrong_self_convention)]
+
 use macroquad::prelude::*;
 
 mod assets;

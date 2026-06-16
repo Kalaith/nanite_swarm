@@ -3,7 +3,6 @@
 use super::PlanetState;
 use macroquad::miniquad;
 use macroquad_toolkit::persistence::{load_string_key, save_string_key};
-use serde_json;
 use std::io;
 
 const GAME_NAME: &str = "nanite_swarm";
@@ -31,12 +30,11 @@ pub fn load_from_json(json: &str) -> Result<PlanetState, serde_json::Error> {
 }
 
 pub fn save_to_file(state: &mut PlanetState, path: &str) -> Result<(), io::Error> {
-    let json = save_to_json(state).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    save_string_key(GAME_NAME, path, &json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    let json = save_to_json(state).map_err(io::Error::other)?;
+    save_string_key(GAME_NAME, path, &json).map_err(io::Error::other)
 }
 
 pub fn load_from_file(path: &str) -> Result<PlanetState, io::Error> {
-    let json =
-        load_string_key(GAME_NAME, path).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-    load_from_json(&json).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    let json = load_string_key(GAME_NAME, path).map_err(io::Error::other)?;
+    load_from_json(&json).map_err(io::Error::other)
 }

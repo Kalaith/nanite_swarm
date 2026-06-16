@@ -60,9 +60,10 @@ impl GridPos {
 }
 
 /// Terrain types that affect gameplay
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum TerrainType {
-    Empty,    // Buildable ground
+    #[default]
+    Empty, // Buildable ground
     Mountain, // Can harvest for iron or place wind turbine
     Forest,   // Can harvest for biomass or keep as pollution buffer
     Water,    // Cannot build, may provide cooling
@@ -127,12 +128,6 @@ impl TerrainType {
     /// Display name
     pub fn name(&self) -> &'static str {
         data::game_data().terrain(self.id()).name.as_str()
-    }
-}
-
-impl Default for TerrainType {
-    fn default() -> Self {
-        TerrainType::Empty
     }
 }
 
@@ -691,16 +686,17 @@ impl Grid {
                 // Check if neighbor has a power-transmitting building
                 if let Some(tile) = self.get(neighbor) {
                     if let Some(ref building) = tile.building {
-                        if building.transmits_power() && !building.is_dust_stalled() {
-                            if next_distance <= Self::POWER_REPEATER_RANGE {
-                                let should_visit = match best_distance.get(&neighbor) {
-                                    Some(existing) => next_distance < *existing,
-                                    None => true,
-                                };
-                                if should_visit {
-                                    best_distance.insert(neighbor, next_distance);
-                                    queue.push_back((neighbor, next_distance));
-                                }
+                        if building.transmits_power()
+                            && !building.is_dust_stalled()
+                            && next_distance <= Self::POWER_REPEATER_RANGE
+                        {
+                            let should_visit = match best_distance.get(&neighbor) {
+                                Some(existing) => next_distance < *existing,
+                                None => true,
+                            };
+                            if should_visit {
+                                best_distance.insert(neighbor, next_distance);
+                                queue.push_back((neighbor, next_distance));
                             }
                         }
                     }

@@ -79,9 +79,9 @@ fn create_ground() -> RgbaImage {
     for y in 0..TILE_HEIGHT {
         for x in 0..TILE_WIDTH {
             let n = hashed_noise(x, y, 303);
-            if n % 37 == 0 {
+            if n.is_multiple_of(37) {
                 img.put_pixel(x, y, Rgba([110, 100, 85, 255]));
-            } else if n % 53 == 0 {
+            } else if n.is_multiple_of(53) {
                 img.put_pixel(x, y, Rgba([70, 60, 50, 255]));
             }
         }
@@ -95,8 +95,8 @@ fn create_mountain() -> RgbaImage {
     add_noise(&mut img, 12, 202);
     // Ridge lines
     for i in 0..6 {
-        let x0 = 2 + (i * 5) as i32;
-        let y0 = 6 + (i * 3) as i32;
+        let x0 = 2 + (i * 5);
+        let y0 = 6 + (i * 3);
         let x1 = x0 + 12;
         let y1 = y0 + 10;
         draw_line(&mut img, x0, y0, x1, y1, Rgba([95, 95, 105, 255]));
@@ -129,9 +129,9 @@ fn create_forest() -> RgbaImage {
     for y in 0..TILE_HEIGHT {
         for x in 0..TILE_WIDTH {
             let n = hashed_noise(x, y, 707);
-            if n % 11 == 0 {
+            if n.is_multiple_of(11) {
                 img.put_pixel(x, y, Rgba([40, 95, 70, 255]));
-            } else if n % 17 == 0 {
+            } else if n.is_multiple_of(17) {
                 img.put_pixel(x, y, Rgba([20, 55, 40, 255]));
             }
         }
@@ -159,7 +159,7 @@ fn create_water() -> RgbaImage {
                 Rgba([
                     p[0].saturating_add(wave.max(0) as u8),
                     p[1].saturating_add((wave / 2).max(0) as u8),
-                    p[2].saturating_add((wave / 1).max(0) as u8),
+                    p[2].saturating_add(wave.max(0) as u8),
                     255,
                 ]),
             );

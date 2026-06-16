@@ -39,7 +39,7 @@ pub fn add_edge_darkening(img: &mut RgbaImage, depth: u32, amount: i16) {
             let edge_dist = x.min(y).min(TILE_WIDTH - 1 - x).min(TILE_HEIGHT - 1 - y);
             if edge_dist < depth {
                 let scale = (depth - edge_dist) as i16;
-                let delta = -amount * scale as i16 / depth as i16;
+                let delta = -amount * scale / depth as i16;
                 let p = *img.get_pixel(x, y);
                 img.put_pixel(
                     x,
@@ -70,10 +70,13 @@ pub fn draw_circle(img: &mut RgbaImage, cx: i32, cy: i32, r: i32, color: Rgba<u8
         for x in (cx - r)..=(cx + r) {
             let dx = x - cx;
             let dy = y - cy;
-            if dx * dx + dy * dy <= r2 {
-                if x >= 0 && y >= 0 && (x as u32) < TILE_WIDTH && (y as u32) < TILE_HEIGHT {
-                    img.put_pixel(x as u32, y as u32, color);
-                }
+            if dx * dx + dy * dy <= r2
+                && x >= 0
+                && y >= 0
+                && (x as u32) < TILE_WIDTH
+                && (y as u32) < TILE_HEIGHT
+            {
+                img.put_pixel(x as u32, y as u32, color);
             }
         }
     }

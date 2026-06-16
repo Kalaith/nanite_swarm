@@ -835,8 +835,10 @@ mod tests {
 
     #[test]
     fn offline_simulation_uses_hibernation_rate() {
-        let mut state = PlanetState::default();
-        state.battery_seconds = 4.0 * 60.0 * 60.0;
+        let mut state = PlanetState {
+            battery_seconds: 4.0 * 60.0 * 60.0,
+            ..Default::default()
+        };
 
         let offline = 6.0 * 60.0 * 60.0;
         state.apply_offline_progress(offline);

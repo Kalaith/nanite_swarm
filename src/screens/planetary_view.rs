@@ -118,7 +118,7 @@ fn is_cursor_over_ui(
 }
 
 fn hash01(seed: u32) -> f32 {
-    let noise = (seed as f32 * 12.9898).sin() * 43758.5453;
+    let noise = (seed as f32 * 12.9898).sin() * 43_758.547;
     noise.fract().abs()
 }
 
@@ -416,7 +416,7 @@ fn terrain_color_at(pos: GridPos, terrain: TerrainType, revealed: bool) -> Color
     color
 }
 
-fn terrain_texture<'a>(terrain: TerrainType, textures: &'a GameTextures) -> &'a Texture2D {
+fn terrain_texture(terrain: TerrainType, textures: &GameTextures) -> &Texture2D {
     let id = terrain.id();
     textures
         .terrain
@@ -425,7 +425,7 @@ fn terrain_texture<'a>(terrain: TerrainType, textures: &'a GameTextures) -> &'a 
         .unwrap_or(&textures.terrain.by_id["empty"])
 }
 
-fn building_texture<'a>(building_type: BuildingType, textures: &'a GameTextures) -> &'a Texture2D {
+fn building_texture(building_type: BuildingType, textures: &GameTextures) -> &Texture2D {
     textures
         .buildings
         .by_id
