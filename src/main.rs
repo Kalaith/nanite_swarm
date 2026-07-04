@@ -5,6 +5,7 @@
 #![allow(clippy::too_many_arguments, clippy::wrong_self_convention)]
 
 use macroquad::prelude::*;
+use macroquad_toolkit::capture;
 
 mod assets;
 mod data;
@@ -310,6 +311,18 @@ impl Game {
         }
     }
 
+    /// Seed a specific scene for the screenshot harness.
+    pub fn begin_capture_scene(&mut self, scene: &str) {
+        match scene {
+            "mainmenu" => self.phase = GamePhase::MainMenu,
+            "research" => self.phase = GamePhase::Research,
+            _ => {
+                // Default: jump straight into gameplay on the starting planet.
+                self.phase = GamePhase::Playing;
+            }
+        }
+    }
+
     fn update_directives(&mut self, delta_time: f32) {
         self.directive_timer += delta_time;
         if self.directive_timer >= 600.0
@@ -328,19 +341,25 @@ impl Game {
 }
 
 fn window_conf() -> Conf {
-    Conf {
-        window_title: "Nanite Swarm".to_string(),
-        window_width: 1280,
-        window_height: 720,
-        window_resizable: true,
-        high_dpi: true,
-        ..Default::default()
-    }
+    capture::capture_window_conf("NANITE_SWARM", "Nanite Swarm", 1280, 720)
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut game = Game::new().await;
+
+    // Screenshot harness: when NANITE_SWARM_CAPTURE_PATH is set, seed a scene,
+    // simulate deterministic frames, write a PNG, and exit. Each render_*
+    // screen function clears its own background, so there is nothing extra
+    // to move into the closure.
+    if let Some(config) = capture::CaptureConfig::from_env("NANITE_SWARM") {
+        game.begin_capture_scene(&config.scene);
+        capture::run_capture(&config, |_dt| {
+            game.update();
+        })
+        .await;
+        return;
+    }
 
     loop {
         game.update();
