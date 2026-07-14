@@ -38,3 +38,65 @@ pub fn load_from_file(path: &str) -> Result<PlanetState, io::Error> {
     let json = load_string_key(GAME_NAME, path).map_err(io::Error::other)?;
     load_from_json(&json).map_err(io::Error::other)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::GameConfig;
+    use crate::engine::{BuildingType, GridPos};
+
+    #[test]
+    fn json_roundtrip_preserves_grid_and_resources() {
+        let mut state = PlanetState::new("Roundtrip", 8, 8, 7, GameConfig::default());
+        let core = state.grid.find_core().unwrap();
+        let pos = GridPos::new(core.x + 1, core.y);
+        state.grid.reveal_around(pos, 1);
+        state.select_building(BuildingType::Drill);
+        state.try_place_building(pos);
+
+        let json = save_to_json(&mut state).unwrap();
+        let loaded = load_from_json(&json).unwrap();
+
+        assert_eq!(loaded.name, "Roundtrip");
+        assert_eq!(loaded.grid.width, state.grid.width);
+        assert_eq!(loaded.resources.minerals, state.resources.minerals);
+        assert!(loaded.grid.get(pos).unwrap().building.is_some());
+        assert_eq!(loaded.drones.total_count(), 1);
+    }
+
+    #[test]
+    fn save_to_json_stamps_last_saved_unix() {
+        let mut state = PlanetState {
+            last_saved_unix: 0,
+            ..Default::default()
+        };
+        save_to_json(&mut state).unwrap();
+        assert!(state.last_saved_unix > 0);
+    }
+
+    #[test]
+    fn load_from_json_applies_offline_progress_for_past_save() {
+        let now = unix_seconds_now();
+        let state = PlanetState {
+            last_saved_unix: now - 120,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&state).unwrap();
+
+        let loaded = load_from_json(&json).unwrap();
+        assert!(loaded.last_offline_seconds > 0.0);
+        assert_eq!(loaded.last_saved_unix, now);
+    }
+
+    #[test]
+    fn load_from_json_skips_offline_progress_for_fresh_save() {
+        let state = PlanetState {
+            last_saved_unix: unix_seconds_now(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&state).unwrap();
+
+        let loaded = load_from_json(&json).unwrap();
+        assert_eq!(loaded.last_offline_seconds, 0.0);
+    }
+}

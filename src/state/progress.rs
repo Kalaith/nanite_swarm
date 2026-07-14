@@ -112,3 +112,101 @@ impl PlanetState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::PlanetState;
+    use crate::engine::BuildingType;
+
+    fn approx_eq(a: f32, b: f32, eps: f32) -> bool {
+        (a - b).abs() <= eps
+    }
+
+    #[test]
+    fn offline_simulation_uses_hibernation_rate() {
+        let mut state = PlanetState {
+            battery_seconds: 4.0 * 60.0 * 60.0,
+            ..Default::default()
+        };
+
+        let offline = 6.0 * 60.0 * 60.0;
+        state.apply_offline_progress(offline);
+
+        let expected_sim = (4.0 * 60.0 * 60.0) + (2.0 * 60.0 * 60.0) * 0.1;
+        assert!(approx_eq(state.last_offline_simulated, expected_sim, 0.5));
+        assert!(approx_eq(state.last_offline_seconds, offline, 0.5));
+        assert!(state.battery_seconds <= 0.0);
+        assert!(state.offline_notice_timer > 0.0);
+    }
+
+    #[test]
+    fn apply_offline_progress_is_noop_for_zero_or_negative_duration() {
+        let mut state = PlanetState::default();
+        state.apply_offline_progress(0.0);
+        assert_eq!(state.last_offline_seconds, 0.0);
+        assert_eq!(state.last_offline_simulated, 0.0);
+    }
+
+    #[test]
+    fn core_is_always_unlocked_others_require_explicit_unlock() {
+        let mut state = PlanetState::default();
+        assert!(state.is_building_unlocked(BuildingType::Core));
+        assert!(!state.is_building_unlocked(BuildingType::Conduit));
+        state.unlock_building(BuildingType::Conduit);
+        assert!(state.is_building_unlocked(BuildingType::Conduit));
+    }
+
+    #[test]
+    fn unlock_building_does_not_duplicate_entries() {
+        let mut state = PlanetState::default();
+        state.unlock_building(BuildingType::Storage);
+        state.unlock_building(BuildingType::Storage);
+        assert_eq!(
+            state
+                .unlocked_buildings
+                .iter()
+                .filter(|b| **b == BuildingType::Storage)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn mineral_capacity_grows_with_storage_buildings() {
+        let mut state = PlanetState::default();
+        let base = state.mineral_capacity();
+        let core = state.grid.find_core().unwrap();
+        let pos = crate::engine::GridPos::new(core.x + 1, core.y);
+        state.grid.reveal_around(pos, 1);
+        state.unlock_building(BuildingType::Storage);
+        state.select_building(BuildingType::Storage);
+        state.try_place_building(pos);
+        assert!(state.mineral_capacity() > base);
+    }
+
+    #[test]
+    fn battery_time_left_converts_seconds_to_hours_and_minutes() {
+        let state = PlanetState {
+            battery_seconds: 3661.0, // 1h 1m 1s
+            ..Default::default()
+        };
+        assert_eq!(state.battery_time_left(), (1, 1));
+    }
+
+    #[test]
+    fn achievements_progress_unlocks_first_drill_and_power_surplus() {
+        let mut state = PlanetState::default();
+        let (unlocked_before, total) = state.achievements_progress();
+        assert_eq!(unlocked_before, 0);
+
+        let core = state.grid.find_core().unwrap();
+        let pos = crate::engine::GridPos::new(core.x + 1, core.y);
+        state.grid.reveal_around(pos, 1);
+        state.select_building(BuildingType::Drill);
+        state.try_place_building(pos);
+
+        let (unlocked_after, total_after) = state.achievements_progress();
+        assert!(unlocked_after > unlocked_before);
+        assert_eq!(total_after, total);
+    }
+}

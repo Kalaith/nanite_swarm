@@ -4,10 +4,12 @@
 
 #![allow(unused)]
 
+mod actions;
 mod game_state;
 mod particles;
 mod persistence;
 mod progress;
+mod simulation;
 
 pub use game_state::*;
 pub use persistence::*;

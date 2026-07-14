@@ -273,3 +273,131 @@ pub fn find_path(grid: &Grid, from: GridPos, to: GridPos) -> Vec<GridPos> {
     }
     path
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn straight_path(len: usize) -> Vec<GridPos> {
+        (1..=len as i32).map(|x| GridPos::new(x, 0)).collect()
+    }
+
+    #[test]
+    fn dispatch_to_core_caps_carrying_at_capacity() {
+        let mut drone = Drone::new(1, GridPos::new(0, 0), 10.0, 5.0);
+        drone.dispatch_to_core(GridPos::new(3, 0), straight_path(3), 999.0);
+        assert_eq!(drone.carrying, 10.0);
+        assert_eq!(drone.state, DroneState::MovingToCore);
+        assert_eq!(drone.path_index, 0);
+    }
+
+    #[test]
+    fn update_does_not_arrive_before_crossing_full_progress() {
+        let mut drone = Drone::new(1, GridPos::new(0, 0), 10.0, 5.0);
+        drone.dispatch_to_core(GridPos::new(1, 0), straight_path(1), 5.0);
+
+        // speed(5.0) * delta(0.1) = 0.5 progress: not enough to cross one edge yet.
+        let event = drone.update(0.1);
+        assert!(event.is_none());
+        assert_eq!(drone.state, DroneState::MovingToCore);
+        assert_eq!(drone.position, GridPos::new(0, 0));
+    }
+
+    #[test]
+    fn update_reaches_core_after_crossing_a_single_hop_path() {
+        let mut drone = Drone::new(1, GridPos::new(0, 0), 10.0, 5.0);
+        drone.dispatch_to_core(GridPos::new(1, 0), straight_path(1), 5.0);
+
+        // speed(5.0) * delta(0.3) = 1.5 progress: crosses the single edge.
+        let event = drone.update(0.3);
+        assert!(matches!(
+            event,
+            Some(DroneEvent::ReachedCore { amount, .. }) if amount == 5.0
+        ));
+        assert_eq!(drone.state, DroneState::Delivering);
+        assert_eq!(drone.position, GridPos::new(1, 0));
+    }
+
+    #[test]
+    fn update_eventually_reaches_core_over_a_multi_hop_path() {
+        let mut drone = Drone::new(1, GridPos::new(0, 0), 10.0, 5.0);
+        drone.dispatch_to_core(GridPos::new(3, 0), straight_path(3), 5.0);
+
+        let mut delivered = None;
+        for _ in 0..20 {
+            if let Some(DroneEvent::ReachedCore { amount, .. }) = drone.update(0.3) {
+                delivered = Some(amount);
+                break;
+            }
+        }
+        assert_eq!(delivered, Some(5.0));
+        assert_eq!(drone.state, DroneState::Delivering);
+        assert_eq!(drone.position, GridPos::new(3, 0));
+    }
+
+    #[test]
+    fn return_to_drill_reaches_drill_and_goes_idle() {
+        let mut drone = Drone::new(1, GridPos::new(2, 0), 10.0, 10.0);
+        drone.position = GridPos::new(2, 0);
+        drone.return_to_drill(straight_path(0));
+        // Empty path: the very next update should immediately arrive.
+        let event = drone.update(1.0);
+        assert!(matches!(event, Some(DroneEvent::ReachedDrill { .. })));
+        assert_eq!(drone.state, DroneState::Idle);
+    }
+
+    #[test]
+    fn idle_and_error_states_do_not_move() {
+        let mut idle = Drone::new(1, GridPos::new(0, 0), 10.0, 5.0);
+        assert!(idle.update(1.0).is_none());
+        assert_eq!(idle.position, GridPos::new(0, 0));
+
+        let mut errored = Drone::new(2, GridPos::new(0, 0), 10.0, 5.0);
+        errored.state = DroneState::Error;
+        assert!(errored.update(1.0).is_none());
+        assert_eq!(errored.state, DroneState::Error);
+    }
+
+    #[test]
+    fn manager_spawns_and_tracks_drones_per_drill() {
+        let mut manager = DroneManager::new(10.0, 5.0);
+        let drill_a = GridPos::new(0, 0);
+        let drill_b = GridPos::new(5, 5);
+        manager.spawn_drone(drill_a);
+        manager.spawn_drone(drill_a);
+        manager.spawn_drone(drill_b);
+
+        assert_eq!(manager.total_count(), 3);
+        assert_eq!(manager.drones_at_drill(drill_a).len(), 2);
+        assert_eq!(manager.count_by_state(DroneState::Idle), 3);
+
+        manager.remove_drones_at_drill(drill_a);
+        assert_eq!(manager.total_count(), 1);
+    }
+
+    #[test]
+    fn manager_assigns_unique_ascending_ids() {
+        let mut manager = DroneManager::new(10.0, 5.0);
+        let id1 = manager.spawn_drone(GridPos::new(0, 0));
+        let id2 = manager.spawn_drone(GridPos::new(0, 0));
+        assert_ne!(id1, id2);
+        assert!(manager.get_drone_mut(id1).is_some());
+        assert!(manager.get_drone_mut(id2).is_some());
+        assert!(manager.get_drone_mut(id2 + 100).is_none());
+    }
+
+    #[test]
+    fn find_path_returns_empty_for_same_position() {
+        let grid = Grid::new(4, 4);
+        let pos = GridPos::new(1, 1);
+        assert_eq!(find_path(&grid, pos, pos), Vec::new());
+    }
+
+    #[test]
+    fn find_path_reaches_destination_across_open_ground() {
+        let grid = Grid::new(5, 5);
+        let path = find_path(&grid, GridPos::new(0, 0), GridPos::new(4, 4));
+        assert_eq!(path.last(), Some(&GridPos::new(4, 4)));
+        assert!(!path.is_empty());
+    }
+}
