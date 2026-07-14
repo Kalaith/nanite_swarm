@@ -13,6 +13,7 @@ use crate::directives::Directive;
 use crate::state::PlanetState;
 use crate::ui::color_from_rgba;
 use macroquad::prelude::*;
+use macroquad_toolkit::math::{lerp, pulse01_at};
 
 use metrics::{is_cursor_over_ui, screen_to_grid, HudMetrics};
 
@@ -28,7 +29,6 @@ pub enum PlanetaryAction {
 /// Render the planetary grid view
 pub fn render_planetary_view(
     state: &mut PlanetState,
-    show_fps: bool,
     textures: &GameTextures,
     directive: &Directive,
     theme: &UiTheme,
@@ -38,8 +38,8 @@ pub fn render_planetary_view(
     let screen_w = screen_width();
     let screen_h = screen_height();
     let metrics = HudMetrics::for_screen(theme, screen_w, screen_h);
-    let pulse = ((state.time_played as f32) * 2.5).sin().abs();
-    let global_pulse = 0.9 + 0.1 * (state.time_played as f32 * 2.0).sin();
+    let pulse = pulse01_at(state.time_played, 2.5);
+    let global_pulse = lerp(0.8, 1.0, pulse01_at(state.time_played, 2.0));
     let time = state.time_played as f32;
 
     let (mouse_x, mouse_y) = mouse_position();
@@ -59,7 +59,6 @@ pub fn render_planetary_view(
         screen_w,
         screen_h,
         hovered_pos,
-        show_fps,
         directive,
         textures,
         theme,

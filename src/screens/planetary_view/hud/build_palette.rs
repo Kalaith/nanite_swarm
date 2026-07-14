@@ -6,6 +6,7 @@ use crate::engine::BuildingType;
 use crate::state::PlanetState;
 use crate::ui::{color_from_rgba, draw_hud_button, draw_hud_panel};
 use macroquad::prelude::*;
+use macroquad_toolkit::colors::with_alpha;
 use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 use super::super::format::{fit_text_to_width, format_power_delta};
@@ -71,7 +72,7 @@ fn draw_build_row(
             width + 2.0,
             height + 2.0,
             1.0,
-            Color::new(accent.r, accent.g, accent.b, 0.65),
+            with_alpha(accent, 0.65),
         );
     }
 
@@ -208,7 +209,6 @@ pub(super) fn draw(
     screen_h: f32,
 ) {
     let dim = colors.dim;
-    let primary_soft = colors.primary_soft;
 
     let sidebar_x = 10.0;
     let sidebar_y = metrics.top_bar_height + metrics.panel_gap;
@@ -261,23 +261,11 @@ pub(super) fn draw(
         total_rows as f32 * metrics.build_row_height
             + (total_rows.saturating_sub(1)) as f32 * row_gap
     };
-    let max_scroll = (total_height - list_height).max(0.0);
+    let list_view = Rect::new(content_x, list_top, content_w, list_height);
+    state.build_palette_scroll.update(list_view, total_height);
+    let scroll_offset = state.build_palette_scroll.offset();
 
-    let (mouse_x, mouse_y) = mouse_position();
-    if mouse_x >= content_x
-        && mouse_x <= content_x + content_w
-        && mouse_y >= list_top
-        && mouse_y <= list_bottom
-    {
-        let (_wheel_x, wheel_y) = mouse_wheel();
-        if wheel_y.abs() > 0.0 {
-            state.build_palette_scroll =
-                (state.build_palette_scroll - wheel_y * 24.0).clamp(0.0, max_scroll);
-        }
-    }
-    state.build_palette_scroll = state.build_palette_scroll.clamp(0.0, max_scroll);
-
-    let start_y = list_top - state.build_palette_scroll;
+    let start_y = list_top - scroll_offset;
     for (index, building) in visible_buildings.into_iter().enumerate() {
         let card_y = start_y + index as f32 * (metrics.build_row_height + row_gap);
         if card_y + metrics.build_row_height < list_top || card_y > list_bottom {
@@ -295,24 +283,9 @@ pub(super) fn draw(
         );
     }
 
-    if max_scroll > 0.0 && list_height > 0.0 {
-        let scrollbar_w = 6.0;
-        let scrollbar_x = sidebar_x + sidebar_w - scrollbar_w - 6.0;
-        draw_rectangle(
-            scrollbar_x,
-            list_top,
-            scrollbar_w,
-            list_height,
-            color_from_rgba(&theme.colors.panel_deep),
-        );
-        let mut handle_h = list_height * (list_height / total_height);
-        if handle_h < 18.0 {
-            handle_h = 18.0;
-        }
-        let handle_y =
-            list_top + (state.build_palette_scroll / max_scroll) * (list_height - handle_h);
-        draw_rectangle(scrollbar_x, handle_y, scrollbar_w, handle_h, primary_soft);
-    }
+    state
+        .build_palette_scroll
+        .draw_scrollbar(list_view, total_height);
 
     let quick_actions_y = list_bottom + 12.0;
     if draw_hud_button(

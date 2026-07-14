@@ -103,7 +103,6 @@ pub(super) fn draw_ui_panels(
     screen_w: f32,
     screen_h: f32,
     hovered_pos: Option<GridPos>,
-    show_fps: bool,
     directive: &Directive,
     textures: &GameTextures,
     theme: &UiTheme,
@@ -111,7 +110,7 @@ pub(super) fn draw_ui_panels(
 ) -> PlanetaryAction {
     let colors = PanelColors::from_theme(theme, state.power_balance);
 
-    let ui_action = top_bar::draw(state, screen_w, metrics, theme, &colors, show_fps);
+    let ui_action = top_bar::draw(state, screen_w, metrics, theme, &colors);
 
     build_palette::draw(state, theme, textures, metrics, &colors, screen_h);
 

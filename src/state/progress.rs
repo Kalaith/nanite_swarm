@@ -69,9 +69,7 @@ impl PlanetState {
     }
 
     pub fn achievements_progress(&self) -> (usize, usize) {
-        let total = self.achievements.len();
-        let unlocked = self.achievements.iter().filter(|a| a.achieved).count();
-        (unlocked, total)
+        self.achievements.progress()
     }
 
     pub fn placement_scale(&self, pos: GridPos) -> f32 {
@@ -90,25 +88,19 @@ impl PlanetState {
     pub(super) fn update_achievements(&mut self) {
         let has_drill = !self.grid.find_buildings(BuildingType::Drill).is_empty();
         if has_drill {
-            self.unlock_achievement("first_drill");
+            self.achievements.unlock("first_drill");
         }
 
         if self.power_balance > 0.0 {
-            self.unlock_achievement("power_surplus");
+            self.achievements.unlock("power_surplus");
         }
 
         if self.resources.data >= 25.0 {
-            self.unlock_achievement("data_miner");
+            self.achievements.unlock("data_miner");
         }
 
         if self.grid.total_buildings() >= 10 {
-            self.unlock_achievement("builder");
-        }
-    }
-
-    fn unlock_achievement(&mut self, id: &str) {
-        if let Some(ach) = self.achievements.iter_mut().find(|a| a.id == id) {
-            ach.achieved = true;
+            self.achievements.unlock("builder");
         }
     }
 }

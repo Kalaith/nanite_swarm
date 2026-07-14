@@ -20,6 +20,9 @@ pub fn save_to_json(state: &mut PlanetState) -> Result<String, serde_json::Error
 /// Deserialize game state from JSON string
 pub fn load_from_json(json: &str) -> Result<PlanetState, serde_json::Error> {
     let mut state: PlanetState = serde_json::from_str(json)?;
+    state
+        .achievements
+        .sync_definitions(super::game_state::achievement_definitions());
     let now = unix_seconds_now();
     if state.last_saved_unix > 0 && now > state.last_saved_unix {
         let offline_seconds = (now - state.last_saved_unix) as f32;

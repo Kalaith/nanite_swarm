@@ -2,7 +2,8 @@
 
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::draw_ui_text;
+use macroquad_toolkit::settings::GameSettings;
+use macroquad_toolkit::ui::{draw_ui_text, stepper_row, toggle_row};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SettingsAction {
@@ -10,27 +11,8 @@ pub enum SettingsAction {
     Back,
 }
 
-#[derive(Debug, Clone)]
-pub struct Settings {
-    pub music_volume: f32,
-    pub sfx_volume: f32,
-    pub ui_scale: f32,
-    pub show_fps: bool,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            music_volume: 0.6,
-            sfx_volume: 0.7,
-            ui_scale: 1.0,
-            show_fps: false,
-        }
-    }
-}
-
 /// Render the settings menu and return any action taken
-pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
+pub fn render_settings_menu(settings: &mut GameSettings) -> SettingsAction {
     clear_background(Colors::BACKGROUND);
 
     let screen_w = screen_width();
@@ -50,6 +32,9 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
     let panel_y = screen_h * 0.3;
     let audio_x = screen_w * 0.5 - panel_w - 20.0;
     let display_x = screen_w * 0.5 + 20.0;
+    let row_w = panel_w - 32.0;
+    let row_h = 30.0;
+    let row_gap = 18.0;
 
     draw_panel(audio_x, panel_y, panel_w, panel_h);
     draw_ui_text(
@@ -60,35 +45,29 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
         Colors::PRIMARY,
     );
 
-    let mut row_y = panel_y + 70.0;
-    draw_ui_text("Music Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_ui_text(
+    let music_row = Rect::new(audio_x + 16.0, panel_y + 54.0, row_w, row_h);
+    let music_step = stepper_row(
+        music_row,
+        "Music Volume",
         &format!("{:.0}%", settings.music_volume * 100.0),
-        audio_x + 200.0,
-        row_y,
-        14.0,
-        Colors::PRIMARY_SOFT,
     );
-    if draw_button_sized(audio_x + 250.0, row_y - 18.0, 28.0, 26.0, "-") {
-        settings.music_volume = (settings.music_volume - 0.1).max(0.0);
+    if music_step != 0 {
+        settings.music_volume = (settings.music_volume + music_step as f32 * 0.1).clamp(0.0, 1.0);
     }
-    if draw_button_sized(audio_x + 284.0, row_y - 18.0, 28.0, 26.0, "+") {
-        settings.music_volume = (settings.music_volume + 0.1).min(1.0);
-    }
-    row_y += 50.0;
-    draw_ui_text("SFX Volume", audio_x + 16.0, row_y, 14.0, Colors::TEXT);
-    draw_ui_text(
+
+    let sfx_row = Rect::new(
+        audio_x + 16.0,
+        panel_y + 54.0 + row_h + row_gap,
+        row_w,
+        row_h,
+    );
+    let sfx_step = stepper_row(
+        sfx_row,
+        "SFX Volume",
         &format!("{:.0}%", settings.sfx_volume * 100.0),
-        audio_x + 200.0,
-        row_y,
-        14.0,
-        Colors::PRIMARY_SOFT,
     );
-    if draw_button_sized(audio_x + 250.0, row_y - 18.0, 28.0, 26.0, "-") {
-        settings.sfx_volume = (settings.sfx_volume - 0.1).max(0.0);
-    }
-    if draw_button_sized(audio_x + 284.0, row_y - 18.0, 28.0, 26.0, "+") {
-        settings.sfx_volume = (settings.sfx_volume + 0.1).min(1.0);
+    if sfx_step != 0 {
+        settings.sfx_volume = (settings.sfx_volume + sfx_step as f32 * 0.1).clamp(0.0, 1.0);
     }
 
     draw_panel(display_x, panel_y, panel_w, panel_h);
@@ -100,43 +79,24 @@ pub fn render_settings_menu(settings: &mut Settings) -> SettingsAction {
         Colors::PRIMARY,
     );
 
-    let mut display_row_y = panel_y + 70.0;
-    draw_ui_text(
+    let scale_row = Rect::new(display_x + 16.0, panel_y + 54.0, row_w, row_h);
+    let scale_step = stepper_row(
+        scale_row,
         "UI Scale",
-        display_x + 16.0,
-        display_row_y,
-        14.0,
-        Colors::TEXT,
+        &format!("{:.2}x", settings.ui_text_scale),
     );
-    draw_ui_text(
-        &format!("{:.2}x", settings.ui_scale),
-        display_x + 200.0,
-        display_row_y,
-        14.0,
-        Colors::PRIMARY_SOFT,
-    );
-    if draw_button_sized(display_x + 250.0, display_row_y - 18.0, 28.0, 26.0, "-") {
-        settings.ui_scale = (settings.ui_scale - 0.05).max(0.75);
+    if scale_step != 0 {
+        settings.ui_text_scale =
+            (settings.ui_text_scale + scale_step as f32 * 0.05).clamp(0.75, 1.5);
     }
-    if draw_button_sized(display_x + 284.0, display_row_y - 18.0, 28.0, 26.0, "+") {
-        settings.ui_scale = (settings.ui_scale + 0.05).min(1.5);
-    }
-    display_row_y += 50.0;
 
-    let toggle_text = if settings.show_fps {
-        "Show FPS: On"
-    } else {
-        "Show FPS: Off"
-    };
-    if draw_button_sized(
+    let fps_row = Rect::new(
         display_x + 16.0,
-        display_row_y - 16.0,
-        200.0,
-        30.0,
-        toggle_text,
-    ) {
-        settings.show_fps = !settings.show_fps;
-    }
+        panel_y + 54.0 + row_h + row_gap,
+        row_w,
+        row_h,
+    );
+    toggle_row(fps_row, "Show FPS", &mut settings.show_fps);
 
     draw_ui_text(
         "Press ESC to return",

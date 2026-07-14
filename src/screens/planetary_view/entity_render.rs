@@ -4,6 +4,7 @@ use crate::engine::{DroneState, GridPos};
 use crate::state::PlanetState;
 use crate::ui::Colors;
 use macroquad::prelude::*;
+use macroquad_toolkit::colors::{multiply_alpha, with_alpha};
 
 use super::metrics::{grid_to_screen, HudMetrics};
 
@@ -79,7 +80,7 @@ pub(super) fn draw_drones(state: &PlanetState, metrics: HudMetrics, time: f32) {
                 let tail_x = drone_x - norm_x * tail_len * segment_ratio;
                 let tail_y = drone_y - norm_y * tail_len * segment_ratio;
                 let alpha = 0.4 * (1.0 - segment_ratio);
-                let tail_color = Color::new(drone_color.r, drone_color.g, drone_color.b, alpha);
+                let tail_color = with_alpha(drone_color, alpha);
                 draw_circle(tail_x, tail_y, 3.0 - segment as f32 * 0.6, tail_color);
             }
         }
@@ -114,15 +115,14 @@ pub(super) fn draw_drones(state: &PlanetState, metrics: HudMetrics, time: f32) {
 }
 
 pub(super) fn draw_particles(state: &PlanetState, metrics: HudMetrics) {
-    for particle in &state.particles {
+    for particle in state.particles.particles() {
         let screen_x = metrics.grid_offset_x()
-            + particle.position.0 * metrics.tile_size
+            + particle.position.x * metrics.tile_size
             + metrics.tile_size * 0.5;
         let screen_y = metrics.grid_offset_y()
-            + particle.position.1 * metrics.tile_size
+            + particle.position.y * metrics.tile_size
             + metrics.tile_size * 0.5;
-        let alpha = (particle.life / particle.max_life).clamp(0.0, 1.0);
-        let color = Color::new(particle.color.r, particle.color.g, particle.color.b, alpha);
+        let color = multiply_alpha(particle.color, particle.life_fraction());
         draw_circle(screen_x, screen_y, particle.size, color);
     }
 }

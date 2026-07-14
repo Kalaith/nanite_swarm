@@ -6,6 +6,8 @@ use crate::engine::{BuildingType, GridPos, TerrainType};
 use crate::state::PlanetState;
 use crate::ui::Colors;
 use macroquad::prelude::*;
+use macroquad_toolkit::colors::with_alpha;
+use macroquad_toolkit::math::{lerp, pulse01_at};
 use macroquad_toolkit::ui::draw_ui_text;
 
 use super::format::hash01;
@@ -16,7 +18,7 @@ pub(super) fn draw_planetary_background(screen_w: f32, screen_h: f32, time: f32)
     for i in 0..80u32 {
         let star_x = hash01(i) * screen_w;
         let star_y = hash01(i + 17) * screen_h;
-        let twinkle = 0.5 + (time * 0.5 + i as f32).sin().abs() * 0.5;
+        let twinkle = lerp(0.5, 1.0, pulse01_at(time as f64 + 2.0 * i as f64, 0.5));
         let color = Color::new(0.6, 0.7, 0.8, 0.15 + twinkle * 0.2);
         draw_circle(star_x, star_y, 1.0 + hash01(i + 31), color);
     }
@@ -24,7 +26,7 @@ pub(super) fn draw_planetary_background(screen_w: f32, screen_h: f32, time: f32)
     // Planet glow
     let planet_x = screen_w * 0.82;
     let planet_y = screen_h * 0.85;
-    let glow = 0.25 + (time * 0.6).sin().abs() * 0.1;
+    let glow = lerp(0.25, 0.35, pulse01_at(time as f64, 0.6));
     draw_circle(planet_x, planet_y, 220.0, Color::new(0.0, 0.2, 0.35, 0.12));
     draw_circle(planet_x, planet_y, 170.0, Color::new(0.0, 0.3, 0.45, glow));
     draw_circle(planet_x, planet_y, 120.0, Color::new(0.0, 0.25, 0.4, 0.25));
@@ -198,7 +200,7 @@ fn draw_core_visual(px: f32, py: f32, size: f32, state: &PlanetState, textures: 
     let stage = core_stage(state);
     let center_x = px + size * 0.5;
     let center_y = py + size * 0.5;
-    let pulse = ((state.time_played as f32) * 2.0).sin().abs();
+    let pulse = pulse01_at(state.time_played, 2.0);
 
     let texture = match stage {
         0 => &textures.buildings.core_stage_1a,
@@ -247,12 +249,7 @@ fn draw_core_visual(px: f32, py: f32, size: f32, state: &PlanetState, textures: 
             center_y,
             11.0,
             1.0,
-            Color::new(
-                Colors::PRIMARY.r,
-                Colors::PRIMARY.g,
-                Colors::PRIMARY.b,
-                glow_alpha,
-            ),
+            with_alpha(Colors::PRIMARY, glow_alpha),
         );
     }
 }

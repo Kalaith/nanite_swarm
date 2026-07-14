@@ -3,22 +3,13 @@
 use crate::data::GameConfig;
 use crate::engine::{BuildingType, DroneManager, Grid, GridPos};
 use macroquad::miniquad;
-use macroquad::prelude::Color;
+use macroquad_toolkit::achievements::{Achievement, Achievements};
+use macroquad_toolkit::fx::ParticleSystem;
+use macroquad_toolkit::ui::ScrollArea;
 use serde::{Deserialize, Serialize};
 
 fn unix_seconds_now() -> i64 {
     (miniquad::date::now() as i64).max(0)
-}
-
-/// Simple particle for visual effects
-#[derive(Debug, Clone)]
-pub struct Particle {
-    pub position: (f32, f32), // grid-space
-    pub velocity: (f32, f32), // grid-space per second
-    pub life: f32,
-    pub max_life: f32,
-    pub color: Color,
-    pub size: f32,
 }
 
 /// Placement animation for newly placed buildings
@@ -72,15 +63,6 @@ impl Default for ResearchProgress {
     }
 }
 
-/// Achievement tracking
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Achievement {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub achieved: bool,
-}
-
 /// Current game state for a planet
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanetState {
@@ -97,7 +79,7 @@ pub struct PlanetState {
     pub biomass_power_bonus: f32,
     pub battery_seconds: f32,
     pub last_saved_unix: i64,
-    pub achievements: Vec<Achievement>,
+    pub achievements: Achievements,
     pub unlocked_buildings: Vec<BuildingType>,
     #[serde(skip, default)]
     pub self_cleaning_unlocked: bool,
@@ -132,9 +114,9 @@ pub struct PlanetState {
     #[serde(skip, default)]
     pub show_help: bool,
     #[serde(skip, default)]
-    pub build_palette_scroll: f32,
+    pub build_palette_scroll: ScrollArea,
     #[serde(skip, default)]
-    pub particles: Vec<Particle>,
+    pub particles: ParticleSystem,
     #[serde(skip, default)]
     pub particle_timer: f32,
     #[serde(skip, default)]
@@ -187,32 +169,7 @@ impl PlanetState {
             biomass_power_bonus: 0.0,
             battery_seconds: 4.0 * 60.0 * 60.0,
             last_saved_unix: unix_seconds_now(),
-            achievements: vec![
-                Achievement {
-                    id: "first_drill".to_string(),
-                    name: "First Drill".to_string(),
-                    description: "Place your first drill.".to_string(),
-                    achieved: false,
-                },
-                Achievement {
-                    id: "power_surplus".to_string(),
-                    name: "Power Surplus".to_string(),
-                    description: "Reach positive net power.".to_string(),
-                    achieved: false,
-                },
-                Achievement {
-                    id: "data_miner".to_string(),
-                    name: "Data Miner".to_string(),
-                    description: "Accumulate 25 data.".to_string(),
-                    achieved: false,
-                },
-                Achievement {
-                    id: "builder".to_string(),
-                    name: "Builder".to_string(),
-                    description: "Place 10 buildings.".to_string(),
-                    achieved: false,
-                },
-            ],
+            achievements: Achievements::from_definitions(achievement_definitions()),
             self_cleaning_unlocked: false,
             power_negative_seconds: 0.0,
             power_collapse_cooldown: 0.0,
@@ -230,8 +187,8 @@ impl PlanetState {
             drag_last_pos: None,
             selected_tile: None,
             show_help: false,
-            build_palette_scroll: 0.0,
-            particles: Vec::new(),
+            build_palette_scroll: ScrollArea::new(),
+            particles: ParticleSystem::new(),
             particle_timer: 0.0,
             placement_anims: Vec::new(),
             drill_timers: std::collections::HashMap::new(),
@@ -244,4 +201,19 @@ impl Default for PlanetState {
     fn default() -> Self {
         Self::new("Mars", 24, 24, 42, GameConfig::default())
     }
+}
+
+/// Canonical achievement definitions. Used both to seed a new [`PlanetState`]
+/// and to reconcile loaded saves via [`Achievements::sync_definitions`].
+pub(crate) fn achievement_definitions() -> Vec<Achievement> {
+    vec![
+        Achievement::new("first_drill", "First Drill", "Place your first drill."),
+        Achievement::new(
+            "power_surplus",
+            "Power Surplus",
+            "Reach positive net power.",
+        ),
+        Achievement::new("data_miner", "Data Miner", "Accumulate 25 data."),
+        Achievement::new("builder", "Builder", "Place 10 buildings."),
+    ]
 }

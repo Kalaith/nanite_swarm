@@ -6,6 +6,8 @@
 
 use macroquad::prelude::*;
 use macroquad_toolkit::capture;
+use macroquad_toolkit::debug::DebugOverlay;
+use macroquad_toolkit::settings::GameSettings;
 
 mod assets;
 mod data;
@@ -22,7 +24,7 @@ use engine::{ResearchState, ResearchTree};
 use screens::{
     render_interplanetary_view, render_main_menu, render_planetary_view, render_research_view,
     render_settings_menu, InterplanetaryAction, MenuAction, PlanetaryAction, ResearchAction,
-    Settings, SettingsAction,
+    SettingsAction,
 };
 use state::{load_from_file, save_to_file, PlanetState};
 
@@ -42,7 +44,8 @@ pub struct Game {
     planet_state: PlanetState,
     research_tree: ResearchTree,
     research_state: ResearchState,
-    settings: Settings,
+    settings: GameSettings,
+    debug_overlay: DebugOverlay,
     has_save: bool,
     current_planet_index: usize,
     colonized_planets: [bool; 5],
@@ -81,7 +84,13 @@ impl Game {
             planet_state: PlanetState::new("Mars", 24, 24, 42, config.clone()),
             research_tree: ResearchTree::default(),
             research_state: ResearchState::default(),
-            settings: Settings::default(),
+            settings: GameSettings {
+                music_volume: 0.6,
+                sfx_volume: 0.7,
+                ui_text_scale: 1.0,
+                ..GameSettings::default()
+            },
+            debug_overlay: DebugOverlay::new(),
             has_save: false,
             current_planet_index: 2, // Mars is starting planet
             colonized_planets: [false, false, true, false, false], // Mars colonized
@@ -100,6 +109,9 @@ impl Game {
     }
 
     pub fn update(&mut self) {
+        self.debug_overlay.record_frame(get_frame_time());
+        self.debug_overlay.visible = self.settings.show_fps;
+
         match self.phase {
             GamePhase::MainMenu => match render_main_menu(self.has_save) {
                 MenuAction::NewGame => {
@@ -151,7 +163,6 @@ impl Game {
 
                 match render_planetary_view(
                     &mut self.planet_state,
-                    self.settings.show_fps,
                     &self.textures,
                     &self.directive,
                     &self.ui_theme,
@@ -228,6 +239,8 @@ impl Game {
                 }
             }
         }
+
+        self.debug_overlay.draw(&[]);
     }
 
     fn update_research(&mut self, delta_time: f32) {

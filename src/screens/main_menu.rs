@@ -2,6 +2,7 @@
 
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::math::bob;
 use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 /// Actions that can be taken from the main menu
@@ -22,8 +23,7 @@ pub fn render_main_menu(has_save: bool) -> MenuAction {
 
     let screen_w = screen_width();
     let screen_h = screen_height();
-    let time_seconds = get_time() as f32;
-    let float_y = (time_seconds * 1.2).sin() * 6.0;
+    let float_y = bob(1.2, 6.0);
 
     // Ambient glow
     draw_circle(

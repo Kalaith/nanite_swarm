@@ -3,6 +3,7 @@
 use crate::engine::{ResearchState, ResearchTree};
 use crate::ui::{draw_button_sized, draw_panel, Colors, Dimensions};
 use macroquad::prelude::*;
+use macroquad_toolkit::math::pulse01;
 use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 const NODE_RADIUS: f32 = 25.0;
@@ -30,8 +31,7 @@ pub fn render_research_view(
     let screen_h = screen_height();
     let center_x = screen_w / 2.0;
     let center_y = screen_h / 2.0 - 30.0;
-    let time = get_time() as f32;
-    let pulse = (time * 2.0).sin().abs();
+    let pulse = pulse01(2.0);
 
     // Background neural haze
     for i in 0..120u32 {

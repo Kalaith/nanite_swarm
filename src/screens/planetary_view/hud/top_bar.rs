@@ -18,7 +18,6 @@ pub(super) fn draw(
     metrics: HudMetrics,
     theme: &UiTheme,
     colors: &PanelColors,
-    show_fps: bool,
 ) -> PlanetaryAction {
     let mut ui_action = PlanetaryAction::None;
     let dim = colors.dim;
@@ -170,17 +169,6 @@ pub(super) fn draw(
             62.0,
             theme.typography.small,
             warning,
-        );
-    }
-
-    if show_fps {
-        let fps = get_fps();
-        draw_ui_text(
-            &format!("FPS {}", fps),
-            screen_w - 80.0,
-            80.0,
-            theme.typography.small,
-            dim,
         );
     }
 
